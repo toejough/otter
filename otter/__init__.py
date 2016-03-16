@@ -103,7 +103,7 @@ class Stream:
         new_interruption = False
         fresh_output = False
         post_interruption = False
-        if writer is not self:
+        if writer is not self and output:
             if not self.interrupted:
                 new_interruption = True
             self.interrupted = True
