@@ -75,18 +75,18 @@ class Stream:
     def write(self, output):
         """Write the output to the sink."""
         if output:
-           self.data += output
-           if self.interrupted:
-               self.sink.write(self.data, self)
-           else:
-               self.sink.write(output, self)
-           self.started = True
-           self.interrupted = False
-           if output.endswith('\n'):
-               self.reset()
-           if '\n' in self.data:
-               _, new = self.data.rsplit('\n', 1)
-               self.data = new
+            self.data += output
+            if self.interrupted:
+                self.sink.write(self.data, self)
+            else:
+                self.sink.write(output, self)
+            self.started = True
+            self.interrupted = False
+            if output.endswith('\n'):
+                self.reset()
+            if '\n' in self.data:
+                _, new = self.data.rsplit('\n', 1)
+                self.data = new
 
     def reset(self):
         """reset the stream."""
@@ -104,14 +104,15 @@ class Stream:
         new_interruption = False
         fresh_output = False
         post_interruption = False
-        if writer is not self and output:
-            if not self.interrupted:
-                new_interruption = True
-            self.interrupted = True
-        elif not self.started:
-            fresh_output = True
-        elif self.interrupted:
-            post_interruption = True
+        if output and self.data:
+            if writer is not self:
+                if not self.interrupted:
+                    new_interruption = True
+                self.interrupted = True
+            elif not self.started:
+                fresh_output = True
+            elif self.interrupted:
+                post_interruption = True
         return new_interruption or fresh_output or post_interruption
 
 
