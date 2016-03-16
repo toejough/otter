@@ -32,6 +32,9 @@ class Stream:
         self.interrupted = False
         if output.endswith('\n'):
             self.reset()
+        if '\n' in self.data:
+            _, new = self.data.rsplit('\n', 1)
+            self.data = new
 
     def reset(self):
         """reset the stream."""
@@ -260,3 +263,26 @@ def test_outputting_newline_at_end_of_stream_output_resets_stream():
     expect.equals(stream.data, '')
     expect.equals(stream.sink, None)
     expect.does_not_contain(sink.observers, stream.observe_sink)
+
+
+def test_outputting_newline_in_stream_output_partially_resets_stream():
+    """
+    Test.
+
+    Given a stream is set up.
+    When it is written to with a newline in the iddle.
+    Then it has the same registrations but only teh data after the final newline in the data.
+    """
+    # Given
+    sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
+
+    # When
+    stream.write(' there\nhow are')
+
+    # Then
+    expect.equals(stream.data, 'how are')
+    expect.equals(stream.sink, sink)
+    expect.contains(sink.observers, stream.observe_sink)
