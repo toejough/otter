@@ -118,3 +118,28 @@ def test_streams_output_to_a_sink():
 
     # Then
     expect.equals(printed, ' there')
+
+
+def test_other_outputs_are_interruptions_to_stream():
+    """
+    Test.
+
+    Given a stream outputting to a sink.
+    When the sink is called from another source
+    Then the stream is interrupted.
+    """
+    # Given
+    output_state = {'on newline': False}
+    printed = None
+
+    def sink(output):
+        """a test output function."""
+        nonlocal printed
+        printed = output
+    stream = start_stream("hi", output_state, sink)
+
+    # When
+    sink('foo')
+
+    # Then
+    expect.equals(stream['is interrupted'], True)
