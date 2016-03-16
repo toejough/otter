@@ -3,100 +3,13 @@
 
 # [ Imports ]
 from foot.libs import expect
+from otter import FunctionSink, Stream
 
 
 # [ Implementations ]
-class Stream:
-    """A stream object."""
-
-    def __init__(self):
-        """obj init."""
-        self.sink = None
-        self.interrupted = False
-        self.started = False
-        self.data = ''
-        self.other_sinks = []
-
-    def register_sink(self, sink):
-        """Register the sink to send output to."""
-        if self.sink is None:
-            self.sink = sink
-        else:
-            self.other_sinks.append(sink)
-        sink.register_observer(self.observe_sink)
-
-    def write(self, output):
-        """Write the output to the sink."""
-        self.data += output
-        if self.interrupted:
-            self.sink.write(self.data, self)
-        else:
-            self.sink.write(output, self)
-        self.started = True
-        self.interrupted = False
-        if output.endswith('\n'):
-            self.reset()
-        if '\n' in self.data:
-            _, new = self.data.rsplit('\n', 1)
-            self.data = new
-
-    def reset(self):
-        """reset the stream."""
-        self.sink.unregister_observer(self.observe_sink)
-        self.sink = None
-        for sink in self.other_sinks:
-            sink.unregister_observer(self.observe_sink)
-        self.other_sinks = []
-        self.interrupted = False
-        self.started = False
-        self.data = ''
-
-    def observe_sink(self, output, writer):
-        """observe a change in a sink."""
-        new_interruption = False
-        fresh_output = False
-        post_interruption = False
-        if writer is not self:
-            if not self.interrupted:
-                new_interruption = True
-            self.interrupted = True
-        elif not self.started:
-            fresh_output = True
-        elif self.interrupted:
-            post_interruption = True
-        return new_interruption or fresh_output or post_interruption
-
-
-class Sink:
-    """Test sink."""
-
-    def __init__(self):
-        """obj init."""
-        self.on_newline = None
-        self.observers = []
-        self.output = ''
-        self.last_output = None
-
-    def register_observer(self, observer):
-        """register an observer."""
-        self.observers.append(observer)
-
-    def unregister_observer(self, observer):
-        """unregister an observer."""
-        if observer in self.observers:
-            self.observers.remove(observer)
-
-    def write(self, output, writer=None):
-        """write the output.  Also notify observers."""
-        needs_newline = False
-        for observer in self.observers:
-            if observer(output, writer):
-                needs_newline = True
-        if needs_newline and not self.on_newline:
-            self.last_output = '\n' + output
-        else:
-            self.last_output = output
-        self.output += self.last_output
+def Sink():
+    """test sink."""
+    return FunctionSink(lambda o: o)
 
 
 # [ Tests ]
@@ -118,7 +31,7 @@ def test_streams_start_on_new_line_unknown():
     stream.write('hi')
 
     # Then
-    expect.equals(sink.output, "\nhi")
+    expect.equals(sink.last_output, "\nhi")
 
 
 def test_streams_start_on_new_line_from_new_line():
@@ -139,7 +52,7 @@ def test_streams_start_on_new_line_from_new_line():
     stream.write('hi')
 
     # Then
-    expect.equals(sink.output, "hi")
+    expect.equals(sink.last_output, "hi")
 
 
 def test_streams_start_on_new_line_from_non_new_line():
@@ -160,7 +73,7 @@ def test_streams_start_on_new_line_from_non_new_line():
     stream.write('hi')
 
     # Then
-    expect.equals(sink.output, "\nhi")
+    expect.equals(sink.last_output, "\nhi")
 
 
 def test_streams_output_to_a_sink():
