@@ -12,6 +12,14 @@ def start_stream(output, state, sink):
         sink(output)
     else:
         sink('\n' + output)
+    return {
+        'sink': sink
+    }
+
+
+def write_stream(output, stream):
+    """Write to a stream."""
+    stream['sink'](output)
 
 
 # [ Tests ]
@@ -85,3 +93,28 @@ def test_streams_start_on_new_line_from_non_new_line():
 
     # Then
     expect.equals(printed, "\nhi")
+
+
+def test_streams_output_to_a_sink():
+    """
+    Test.
+
+    Given an existing stream.
+    When data is printed to it.
+    Then the data is printed to the sink.
+    """
+    # Given
+    output_state = {'on newline': False}
+    printed = None
+
+    def sink(output):
+        """a test output function."""
+        nonlocal printed
+        printed = output
+    stream = start_stream("hi", output_state, sink)
+
+    # When
+    write_stream(' there', stream)
+
+    # Then
+    expect.equals(printed, ' there')
