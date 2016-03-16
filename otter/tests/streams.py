@@ -15,10 +15,14 @@ class Stream:
         self.interrupted = False
         self.started = False
         self.data = ''
+        self.other_sinks = []
 
     def register_sink(self, sink):
         """Register the sink to send output to."""
-        self.sink = sink
+        if self.sink is None:
+            self.sink = sink
+        else:
+            self.other_sinks.append(sink)
         sink.register_observer(self.observe_sink)
 
     def write(self, output):
@@ -40,6 +44,9 @@ class Stream:
         """reset the stream."""
         self.sink.unregister_observer(self.observe_sink)
         self.sink = None
+        for sink in self.other_sinks:
+            sink.unregister_observer(self.observe_sink)
+        self.other_sinks = []
         self.interrupted = False
         self.started = False
         self.data = ''
@@ -286,3 +293,39 @@ def test_outputting_newline_in_stream_output_partially_resets_stream():
     expect.equals(stream.data, 'how are')
     expect.equals(stream.sink, sink)
     expect.contains(sink.observers, stream.observe_sink)
+
+
+def test_observing_multiple_sinks():
+    """
+    Test.
+
+    Given a stream observing a second sink
+    When data is written to that sink
+    Then the stream is interrupted.
+    """
+    # Given
+    sink = Sink()
+    other_sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.register_sink(other_sink)
+    stream.write('hi')
+
+    # When
+    other_sink.write('interruption')
+
+    # Then
+    expect.equals(stream.interrupted, True)
+
+    # When
+    stream.write(' there')
+    sink.write('other interruption')
+
+    # Then
+    expect.equals(stream.interrupted, True)
+
+    # When
+    stream.write(' folks')
+
+    # Then
+    expect.equals(sink.last_output, '\nhi there folks')
