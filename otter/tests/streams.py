@@ -30,6 +30,16 @@ class Stream:
             self.sink.write(output, self)
         self.started = True
         self.interrupted = False
+        if output.endswith('\n'):
+            self.reset()
+
+    def reset(self):
+        """reset the stream."""
+        self.sink.unregister_observer(self.observe_sink)
+        self.sink = None
+        self.interrupted = False
+        self.started = False
+        self.data = ''
 
     def observe_sink(self, output, writer):
         """observe a change in a sink."""
@@ -60,6 +70,11 @@ class Sink:
     def register_observer(self, observer):
         """register an observer."""
         self.observers.append(observer)
+
+    def unregister_observer(self, observer):
+        """unregister an observer."""
+        if observer in self.observers:
+            self.observers.remove(observer)
 
     def write(self, output, writer=None):
         """write the output.  Also notify observers."""
@@ -222,3 +237,26 @@ def test_output_to_stream_after_interruption_starts_on_new_line_and_reprints_str
 
     # Then
     expect.equals(sink.last_output, '\nhi there')
+
+
+def test_outputting_newline_at_end_of_stream_output_resets_stream():
+    """
+    Test.
+
+    Given a stream is set up.
+    When it is written to with a newline at the end.
+    Then it has no data and no registrations.
+    """
+    # Given
+    sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
+
+    # When
+    stream.write(' there\n')
+
+    # Then
+    expect.equals(stream.data, '')
+    expect.equals(stream.sink, None)
+    expect.does_not_contain(sink.observers, stream.observe_sink)
