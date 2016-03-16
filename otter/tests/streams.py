@@ -6,20 +6,63 @@ from foot.libs import expect
 
 
 # [ Implementations ]
-def start_stream(output, state, sink):
-    """Start a stream."""
-    if state['on newline']:
-        sink(output)
-    else:
-        sink('\n' + output)
-    return {
-        'sink': sink
-    }
+class Stream:
+    """A stream object."""
+
+    def __init__(self):
+        """obj init."""
+        self.sink = None
+        self.interrupted = False
+        self.started = False
+
+    def register_sink(self, sink):
+        """Register the sink to send output to."""
+        self.sink = sink
+        sink.register_observer(self.observe_sink)
+
+    def write(self, output):
+        """Write the output to the sink."""
+        self.sink.write(output, self)
+        self.started = True
+
+    def observe_sink(self, output, writer):
+        """observe a change in a sink."""
+        new_interruption = False
+        needs_newline = False
+        if writer is not self:
+            if not self.interrupted:
+                new_interruption = True
+            self.interrupted = True
+        elif not self.started:
+            needs_newline = True
+        return needs_newline or new_interruption
 
 
-def write_stream(output, stream):
-    """Write to a stream."""
-    stream['sink'](output)
+class Sink:
+    """Test sink."""
+
+    def __init__(self):
+        """obj init."""
+        self.on_newline = None
+        self.observers = []
+        self.output = ''
+        self.last_output = None
+
+    def register_observer(self, observer):
+        """register an observer."""
+        self.observers.append(observer)
+
+    def write(self, output, writer=None):
+        """write the output.  Also notify observers."""
+        needs_newline = False
+        for observer in self.observers:
+            if observer(output, writer):
+                needs_newline = True
+        if needs_newline and not self.on_newline:
+            self.last_output = '\n' + output
+        else:
+            self.last_output = output
+        self.output += self.last_output
 
 
 # [ Tests ]
@@ -32,19 +75,16 @@ def test_streams_start_on_new_line_unknown():
     Then it begins on a new line.
     """
     # Given
-    output_state = {'on newline': None}
-    printed = None
-
-    def sink(output):
-        """a test output function."""
-        nonlocal printed
-        printed = output
+    sink = Sink()
+    sink.on_newline = None
 
     # When
-    start_stream("hi", output_state, sink)
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
 
     # Then
-    expect.equals(printed, "\nhi")
+    expect.equals(sink.output, "\nhi")
 
 
 def test_streams_start_on_new_line_from_new_line():
@@ -56,19 +96,16 @@ def test_streams_start_on_new_line_from_new_line():
     Then it begins on a new line.
     """
     # Given
-    output_state = {'on newline': True}
-    printed = None
-
-    def sink(output):
-        """a test output function."""
-        nonlocal printed
-        printed = output
+    sink = Sink()
+    sink.on_newline = True
 
     # When
-    start_stream("hi", output_state, sink)
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
 
     # Then
-    expect.equals(printed, "hi")
+    expect.equals(sink.output, "hi")
 
 
 def test_streams_start_on_new_line_from_non_new_line():
@@ -80,19 +117,16 @@ def test_streams_start_on_new_line_from_non_new_line():
     Then it begins on a new line.
     """
     # Given
-    output_state = {'on newline': False}
-    printed = None
-
-    def sink(output):
-        """a test output function."""
-        nonlocal printed
-        printed = output
+    sink = Sink()
+    sink.on_newline = False
 
     # When
-    start_stream("hi", output_state, sink)
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
 
     # Then
-    expect.equals(printed, "\nhi")
+    expect.equals(sink.output, "\nhi")
 
 
 def test_streams_output_to_a_sink():
@@ -104,20 +138,16 @@ def test_streams_output_to_a_sink():
     Then the data is printed to the sink.
     """
     # Given
-    output_state = {'on newline': False}
-    printed = None
-
-    def sink(output):
-        """a test output function."""
-        nonlocal printed
-        printed = output
-    stream = start_stream("hi", output_state, sink)
+    sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
 
     # When
-    write_stream(' there', stream)
+    stream.write(' there')
 
     # Then
-    expect.equals(printed, ' there')
+    expect.equals(sink.last_output, " there")
 
 
 def test_other_outputs_are_interruptions_to_stream():
@@ -129,17 +159,34 @@ def test_other_outputs_are_interruptions_to_stream():
     Then the stream is interrupted.
     """
     # Given
-    output_state = {'on newline': False}
-    printed = None
-
-    def sink(output):
-        """a test output function."""
-        nonlocal printed
-        printed = output
-    stream = start_stream("hi", output_state, sink)
+    sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
 
     # When
-    sink('foo')
+    sink.write('hello!')
 
     # Then
-    expect.equals(stream['is interrupted'], True)
+    expect.equals(stream.interrupted, True)
+
+
+def test_interruptions_to_stream_start_on_new_line():
+    """
+    Test.
+
+    Given a started stream.
+    When an interruption occurs
+    Then the interruption starts on a new line.
+    """
+    # Given
+    sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
+
+    # When
+    sink.write('interruption')
+
+    # Then
+    expect.equals(sink.last_output, '\ninterruption')
