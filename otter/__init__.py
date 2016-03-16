@@ -117,6 +117,7 @@ class Stream:
 
 
 DEFAULT_SINKS = []
+_STD_SINKS = []
 
 
 def DefaultStream():
@@ -130,20 +131,25 @@ def DefaultStream():
 def use_stds():
     """Use the standard out/err streams as the default sinks."""
     global DEFAULT_SINKS
-    original_stdout_write = sys.stdout.write
+    global _STD_SINKS
 
-    def write_and_flush(output):
-        """write and flush."""
-        original_stdout_write(output)
-        sys.stdout.flush()
+    if _STD_SINKS:
+        DEFAULT_SINKS = _STD_SINKS
+    else:
+        original_stdout_write = sys.stdout.write
 
-    std_out_sink = FunctionSink(write_and_flush)
-    std_err_sink = FunctionSink(sys.stderr.write)
+        def write_and_flush(output):
+            """write and flush."""
+            original_stdout_write(output)
+            sys.stdout.flush()
 
-    std_out_sink.other_sinks.append(std_err_sink)
-    std_err_sink.other_sinks.append(std_out_sink)
+        std_out_sink = FunctionSink(write_and_flush)
+        std_err_sink = FunctionSink(sys.stderr.write)
 
-    sys.stdout.write = std_out_sink.write
-    sys.stderr.write = std_err_sink.write
+        std_out_sink.other_sinks.append(std_err_sink)
+        std_err_sink.other_sinks.append(std_out_sink)
 
-    DEFAULT_SINKS = [std_out_sink, std_err_sink]
+        sys.stdout.write = std_out_sink.write
+        sys.stderr.write = std_err_sink.write
+
+        DEFAULT_SINKS = _STD_SINKS = [std_out_sink, std_err_sink]
