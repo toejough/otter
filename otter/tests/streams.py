@@ -14,6 +14,7 @@ class Stream:
         self.sink = None
         self.interrupted = False
         self.started = False
+        self.data = ''
 
     def register_sink(self, sink):
         """Register the sink to send output to."""
@@ -22,20 +23,28 @@ class Stream:
 
     def write(self, output):
         """Write the output to the sink."""
-        self.sink.write(output, self)
+        self.data += output
+        if self.interrupted:
+            self.sink.write(self.data, self)
+        else:
+            self.sink.write(output, self)
         self.started = True
+        self.interrupted = False
 
     def observe_sink(self, output, writer):
         """observe a change in a sink."""
         new_interruption = False
-        needs_newline = False
+        fresh_output = False
+        post_interruption = False
         if writer is not self:
             if not self.interrupted:
                 new_interruption = True
             self.interrupted = True
         elif not self.started:
-            needs_newline = True
-        return needs_newline or new_interruption
+            fresh_output = True
+        elif self.interrupted:
+            post_interruption = True
+        return new_interruption or fresh_output or post_interruption
 
 
 class Sink:
@@ -190,3 +199,26 @@ def test_interruptions_to_stream_start_on_new_line():
 
     # Then
     expect.equals(sink.last_output, '\ninterruption')
+
+
+def test_output_to_stream_after_interruption_starts_on_new_line_and_reprints_stream():
+    """
+    Test.
+
+    Given a stream with data printed to it.
+    and an interruption has occurred
+    When more data is printed to the stream
+    Then the whole stream is reprinted on a new line.
+    """
+    # Given
+    sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
+    sink.write('interruption')
+
+    # When
+    stream.write(' there')
+
+    # Then
+    expect.equals(sink.last_output, '\nhi there')
