@@ -74,18 +74,19 @@ class Stream:
 
     def write(self, output):
         """Write the output to the sink."""
-        self.data += output
-        if self.interrupted:
-            self.sink.write(self.data, self)
-        else:
-            self.sink.write(output, self)
-        self.started = True
-        self.interrupted = False
-        if output.endswith('\n'):
-            self.reset()
-        if '\n' in self.data:
-            _, new = self.data.rsplit('\n', 1)
-            self.data = new
+        if output:
+           self.data += output
+           if self.interrupted:
+               self.sink.write(self.data, self)
+           else:
+               self.sink.write(output, self)
+           self.started = True
+           self.interrupted = False
+           if output.endswith('\n'):
+               self.reset()
+           if '\n' in self.data:
+               _, new = self.data.rsplit('\n', 1)
+               self.data = new
 
     def reset(self):
         """reset the stream."""
