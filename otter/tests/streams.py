@@ -13,6 +13,7 @@ def Sink():
 
 
 # [ Tests ]
+# Tests for starting a new stream on a new line
 def test_streams_start_on_new_line_unknown():
     """
     Test.
@@ -76,6 +77,29 @@ def test_streams_start_on_new_line_from_non_new_line():
     expect.equals(sink.last_output, "\nhi")
 
 
+def test_empty_streams_not_start_on_new_line_from_non_new_line():
+    """
+    Test.
+
+    Given prior state of output system (not-new-line)
+    When a stream is begun with empty data
+    Then it does not begin on a new line.
+    """
+    # Given
+    sink = Sink()
+    sink.on_newline = False
+    sink.write('prior data')
+
+    # When
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('')
+
+    # Then
+    expect.equals(sink.last_output, "prior data")
+
+
+# Test output to sink
 def test_streams_output_to_a_sink():
     """
     Test.
@@ -97,6 +121,28 @@ def test_streams_output_to_a_sink():
     expect.equals(sink.last_output, " there")
 
 
+def test_streams_output_none_to_a_sink():
+    """
+    Test.
+
+    Given an existing stream.
+    When empty data is printed to it.
+    Then no data is printed to the sink.
+    """
+    # Given
+    sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
+
+    # When
+    stream.write('')
+
+    # Then
+    expect.equals(sink.last_output, "\nhi")
+
+
+# Test interruptions
 def test_other_outputs_are_interruptions_to_stream():
     """
     Test.
@@ -116,6 +162,48 @@ def test_other_outputs_are_interruptions_to_stream():
 
     # Then
     expect.equals(stream.interrupted, True)
+
+
+def test_other_outputs_are_not_interruptions_to_empty_stream():
+    """
+    Test.
+
+    Given an empty stream.
+    When the sink is called from another source
+    Then the stream is not interrupted.
+    """
+    # Given
+    sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('')
+
+    # When
+    sink.write('hello!')
+
+    # Then
+    expect.equals(stream.interrupted, False)
+
+
+def test_other_empty_outputs_are_not_interruptions_to_stream():
+    """
+    Test.
+
+    Given a stream outputting to a sink.
+    When the sink is called from another source with empty output
+    Then the stream is not interrupted.
+    """
+    # Given
+    sink = Sink()
+    stream = Stream()
+    stream.register_sink(sink)
+    stream.write('hi')
+
+    # When
+    sink.write('')
+
+    # Then
+    expect.equals(stream.interrupted, False)
 
 
 def test_interruptions_to_stream_start_on_new_line():
@@ -162,6 +250,7 @@ def test_output_to_stream_after_interruption_starts_on_new_line_and_reprints_str
     expect.equals(sink.last_output, '\nhi there')
 
 
+# Test completing a stream
 def test_outputting_newline_at_end_of_stream_output_resets_stream():
     """
     Test.
@@ -208,6 +297,7 @@ def test_outputting_newline_in_stream_output_partially_resets_stream():
     expect.contains(sink.observers, stream.observe_sink)
 
 
+# Test multiple sinks
 def test_observing_multiple_sinks():
     """
     Test.

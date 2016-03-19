@@ -38,19 +38,19 @@ class FunctionSink:
 
     def write(self, output, writer=None):
         """write the output.  Also notify observers."""
-        needs_newline = False
-        for observer in self.observers:
-            if observer(output, writer):
-                needs_newline = True
-        if needs_newline and not self.on_newline:
-            self.last_output = '\n' + output
-        else:
-            self.last_output = output
-        self.func(self.last_output)
         if output:
+            needs_newline = False
+            for observer in self.observers:
+                if observer(output, writer):
+                    needs_newline = True
+            if needs_newline and not self.on_newline:
+                self.last_output = '\n' + output
+            else:
+                self.last_output = output
+            self.func(self.last_output)
             self.on_newline = output.endswith('\n')
-        for sink in self.other_sinks:
-            sink.on_newline = self.on_newline
+            for sink in self.other_sinks:
+                sink.on_newline = self.on_newline
 
 
 class Stream:
