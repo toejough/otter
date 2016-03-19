@@ -36,4 +36,5 @@ setup(
     keywords="output cli",
     packages=find_packages(),
     install_requires=[],
+    zip_safe=False,
 )

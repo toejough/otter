@@ -1,155 +1,266 @@
 """
-Otter - output interruption library.
+Otter: restream your data.
 
-Allows you to define output streams with the following characteristics:
-    * streams start on a new line.
-    * streams output to a sink.
-    * other outputs to the sink constitute an interruption to the stream.  Streams observe the sink to know when it is called.
-    * interruptions to a stream start on a new line.
-    * output to the stream after an interruption starts on a new line, and reprints the entire stream so far, adding the new output.
-    * writing to a stream with output which ends in a new line resets the stream, including data and registrations.
-    * writing to a stream with output which contains a newline resets the data to only what is after the final newline, but retains registrations.
-    * streams can observe multple sinks.
+Outputs a stream of data.
+Watches the output.
+Restreams the data if more is posted after an interruption has occurred.
+
+Defaults to watching stdout and stderr, and printing to stdout.
 """
 
 
-import sys
+# [ Imports ]
+from unittest import TestCase
 
 
-class FunctionSink:
-    """Function sink."""
-
-    def __init__(self, func):
-        """obj init."""
-        self.on_newline = None
-        self.observers = []
-        self.last_output = None
-        self.func = func
-        self.other_sinks = []
-
-    def register_observer(self, observer):
-        """register an observer."""
-        self.observers.append(observer)
-
-    def unregister_observer(self, observer):
-        """unregister an observer."""
-        if observer in self.observers:
-            self.observers.remove(observer)
-
-    def write(self, output, writer=None):
-        """write the output.  Also notify observers."""
-        if output:
-            needs_newline = False
-            for observer in self.observers:
-                if observer(output, writer):
-                    needs_newline = True
-            if needs_newline and not self.on_newline:
-                self.last_output = '\n' + output
-            else:
-                self.last_output = output
-            self.func(self.last_output)
-            self.on_newline = output.endswith('\n')
-            for sink in self.other_sinks:
-                sink.on_newline = self.on_newline
+# [ Helpers ]
+T = TestCase()
 
 
-class Stream:
-    """A stream object."""
+class Writer:
+    """
+    test writer.
+
+    Call an instance to proxy writing.
+    """
 
     def __init__(self):
-        """obj init."""
-        self.sink = None
-        self.interrupted = False
-        self.started = False
-        self.data = ''
-        self.other_sinks = []
+        """init state."""
+        self.written = ''
 
-    def register_sink(self, sink):
-        """Register the sink to send output to."""
-        if self.sink is None:
-            self.sink = sink
-        else:
-            self.other_sinks.append(sink)
-        sink.register_observer(self.observe_sink)
-
-    def write(self, output):
-        """Write the output to the sink."""
-        if output:
-            self.data += output
-            if self.interrupted:
-                self.sink.write(self.data, self)
-            else:
-                self.sink.write(output, self)
-            self.started = True
-            self.interrupted = False
-            if output.endswith('\n'):
-                self.reset()
-            if '\n' in self.data:
-                _, new = self.data.rsplit('\n', 1)
-                self.data = new
-
-    def reset(self):
-        """reset the stream."""
-        self.sink.unregister_observer(self.observe_sink)
-        self.sink = None
-        for sink in self.other_sinks:
-            sink.unregister_observer(self.observe_sink)
-        self.other_sinks = []
-        self.interrupted = False
-        self.started = False
-        self.data = ''
-
-    def observe_sink(self, output, writer):
-        """observe a change in a sink."""
-        new_interruption = False
-        fresh_output = False
-        post_interruption = False
-        if output and self.data:
-            if writer is not self:
-                if not self.interrupted:
-                    new_interruption = True
-                self.interrupted = True
-            elif not self.started:
-                fresh_output = True
-            elif self.interrupted:
-                post_interruption = True
-        return new_interruption or fresh_output or post_interruption
+    def __call__(self, data):
+        """call the writer."""
+        self.written += data
 
 
-DEFAULT_SINKS = []
-_STD_SINKS = []
+# [ Use Cases ]
+def test_example():
+    """test."""
+    # Given
+    # When
+    # Then
+    pass
 
 
-def DefaultStream():
-    """Get the default stream."""
-    stream = Stream()
-    for sink in DEFAULT_SINKS:
-        stream.register_sink(sink)
-    return stream
+# [ Basic use cases ]
+# when a new stream is started at a new line, the data is just printed.
+# when a new stream is started mid-line, a new line is printed, then the new stream data is printed.
+# when continuation data is sent, and the line only contains the prior data from the stream, the data is just printed.
+# when continuation data is sent, and the line contains something other than the prior data from the stream, and it's at a new line, the prior data is printed as if starting a new stream at a new line, then the new data is printed.
+# when continuation data is sent, and the line contains something other than the prior data from the stream, and it's mid line, the prior data is printed as if starting a new stream mid line, then the new data is printed.
+# when data is sent, but not through a stream, and there is a new line, the data is printed
+# when data is sent, but not through a stream, and there is not a new line, and the last thing to print was a stream, then a newline is printed and the data is printed
+# when data is sent, but not through a stream, and there is not a new line, and the last thing to print was not a stream, the the data is printed.
 
 
-def use_stds():
-    """Use the standard out/err streams as the default sinks."""
-    global DEFAULT_SINKS
-    global _STD_SINKS
+def test_new_stream_new_line():
+    """test."""
+    # Given
+    data = 'initial stream data'
+    write = Writer()
 
-    if _STD_SINKS:
-        DEFAULT_SINKS = _STD_SINKS
-    else:
-        original_stdout_write = sys.stdout.write
+    # When
+    start_new_stream_at_new_line(write, data)
 
-        def write_and_flush(output):
-            """write and flush."""
-            original_stdout_write(output)
-            sys.stdout.flush()
+    # Then
+    T.assertEqual(data, write.written)
 
-        std_out_sink = FunctionSink(write_and_flush)
-        std_err_sink = FunctionSink(sys.stderr.write)
 
-        std_out_sink.other_sinks.append(std_err_sink)
-        std_err_sink.other_sinks.append(std_out_sink)
+def start_new_stream_at_new_line(write, data):
+    """
+    Write initial stream data at a new line.
 
-        sys.stdout.write = std_out_sink.write
-        sys.stderr.write = std_err_sink.write
+    Simply writes the data.
+    """
+    write(data)
 
-        DEFAULT_SINKS = _STD_SINKS = [std_out_sink, std_err_sink]
+
+def test_new_stream_mid_line():
+    """test."""
+    # Given
+    data = 'mid-stream data'
+    expected_written = '\n' + data
+    write = Writer()
+
+    # When
+    start_new_stream_mid_line(write, data)
+
+    # Then
+    T.assertEqual(expected_written, write.written)
+
+
+def start_new_stream_mid_line(write, data):
+    """
+    start a new stream mid line.
+
+    writes a new line first, then the data.
+    """
+    write('\n' + data)
+
+
+def test_continuation_from_prior_data():
+    """test."""
+    # Given
+    data = 'continuation data'
+    expected_written = data
+    write = Writer()
+
+    # When
+    continue_stream_from_prior_data(write, data)
+
+    # Then
+    T.assertEqual(expected_written, write.written)
+
+
+def continue_stream_from_prior_data(write, data):
+    """
+    Continue a stream from prior data.
+
+    writes the new data.
+    """
+    write(data)
+
+
+def test_continuation_from_new_line():
+    """test."""
+    # Given
+    data = 'continuation data'
+    prior_data = 'initial stream data '
+
+    start_write = Writer()
+    start_new_stream_at_new_line(start_write, prior_data)
+
+    continue_write = Writer()
+    continue_stream_from_prior_data(continue_write, data)
+
+    expected_written = start_write.written + continue_write.written
+    write = Writer()
+
+    # When
+    continue_stream_from_new_line(write, data, prior_data)
+
+    # Then
+    T.assertEqual(expected_written, write.written)
+
+
+def continue_stream_from_new_line(
+    write, data, prior_data,
+    start_at_new_line=start_new_stream_at_new_line,
+    continue_from_prior=continue_stream_from_prior_data
+):
+    """
+    Continue a stream from a new line.
+
+    restarts the stream with the prior data at the new line, then continues the stream from that data.
+    """
+    start_at_new_line(write, prior_data)
+    continue_from_prior(write, data)
+
+
+def test_continuation_from_mid_line():
+    """test."""
+    # Given
+    data = 'continuation data'
+    prior_data = 'initial stream data '
+
+    start_write = Writer()
+    start_new_stream_mid_line(start_write, prior_data)
+
+    continue_write = Writer()
+    continue_stream_from_prior_data(continue_write, data)
+
+    expected_written = start_write.written + continue_write.written
+    write = Writer()
+
+    # When
+    continue_stream_from_mid_line(write, data, prior_data)
+
+    # Then
+    T.assertEqual(expected_written, write.written)
+
+
+def continue_stream_from_mid_line(
+    write, data, prior_data,
+    start_mid_line=start_new_stream_mid_line,
+    continue_from_prior=continue_stream_from_prior_data
+):
+    """
+    Continue a stream from a new line.
+
+    restarts the stream with the prior data at the new line, then continues the stream from that data.
+    """
+    start_mid_line(write, prior_data)
+    continue_from_prior(write, data)
+
+
+def test_non_stream_at_new_line():
+    """test."""
+    # Given
+    data = 'non-stream data'
+
+    expected_written = data
+    write = Writer()
+
+    # When
+    write_non_stream_at_new_line(write, data)
+
+    # Then
+    T.assertEqual(expected_written, write.written)
+
+
+def write_non_stream_at_new_line(write, data):
+    """
+    write non-stream data from a new line.
+
+    just write the data
+    """
+    write(data)
+
+
+def test_non_stream_mid_stream():
+    """test."""
+    # Given
+    data = 'non-stream data'
+
+    expected_written = '\n' + data
+    write = Writer()
+
+    # When
+    write_non_stream_mid_stream(write, data)
+
+    # Then
+    T.assertEqual(expected_written, write.written)
+
+
+def write_non_stream_mid_stream(write, data):
+    """
+    write non-stream data from mid-stream.
+
+    write a new line then the data
+    """
+    write('\n' + data)
+
+
+# when data is sent, but not through a stream, and there is not a new line, and the last thing to print was not a stream, the the data is printed.
+def test_non_stream_mid_line():
+    """test."""
+    # Given
+    data = 'non-stream data'
+
+    expected_written = data
+    write = Writer()
+
+    # When
+    write_non_stream_mid_line(write, data)
+
+    # Then
+    T.assertEqual(expected_written, write.written)
+
+
+def write_non_stream_mid_line(write, data):
+    """
+    write non-stream data from mid-line.
+
+    just write the data
+    """
+    write(data)
