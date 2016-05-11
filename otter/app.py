@@ -62,23 +62,24 @@ class Stream:
         """write the given data via a use case."""
         if not data:
             pass
-        elif not self._prior_data:
-            if self._line_tracker.last_line == '':
-                self.start_new_stream_at_new_line(self._tracked_write, data)
-            else:
-                self.start_new_stream_mid_line(self._tracked_write, data)
         else:
-            if self._line_tracker.last_line == self._prior_data:
-                self.continue_stream_from_prior_data(self._tracked_write, data)
-            elif self._line_tracker.last_line == '':
-                self.continue_stream_from_new_line(self._tracked_write, data, self._prior_data)
+            if not self._prior_data:
+                if self._line_tracker.last_line == '':
+                    self.start_new_stream_at_new_line(self._tracked_write, data)
+                else:
+                    self.start_new_stream_mid_line(self._tracked_write, data)
             else:
-                self.continue_stream_from_mid_line(self._tracked_write, data, self._prior_data)
+                if self._line_tracker.last_line == self._prior_data:
+                    self.continue_stream_from_prior_data(self._tracked_write, data)
+                elif self._line_tracker.last_line == '':
+                    self.continue_stream_from_new_line(self._tracked_write, data, self._prior_data)
+                else:
+                    self.continue_stream_from_mid_line(self._tracked_write, data, self._prior_data)
+            self._prior_data += data
 
     def _tracked_write(self, data):
         """Write the given data."""
         self._writer(data)
-        self._prior_data += data
         self._line_tracker.update(data)
         self._source_tracker.stream_wrote_last = True
 

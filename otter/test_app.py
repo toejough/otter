@@ -145,7 +145,7 @@ def test_prior_data_field():
     stream.write(data)
 
     # Then
-    T.assertTrue(stream._prior_data.endswith(data))
+    T.assertEqual(stream._prior_data, data)
 
 
 def test_append_to_prior_data_field():
