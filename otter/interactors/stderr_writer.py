@@ -1,16 +1,16 @@
-"""stdout interactor."""
+"""stderr interactor."""
 
 import sys
 
 
 # record early, because this most likely will get replaced.
-WRITE = sys.stdout.write
+WRITE = sys.stderr.write
 
 
 def write(data):
-    """write the data to stdout."""
+    """write the data to stderr."""
     WRITE(data)
-    sys.stdout.flush()
+    sys.stderr.flush()
 
 
 def reset():
