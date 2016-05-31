@@ -10,7 +10,7 @@ class Recorder:
     def __init__(self):
         """init state."""
         self.last_from_stream = False
-        self.output_record = None
+        self.output_record = ''
         self._max_output = 0
 
     def set_singleton(self):
@@ -19,15 +19,11 @@ class Recorder:
 
     def record(self, data, from_stream=False):
         """Record outputted data."""
-        if not self.output_record:
-            self.output_record = data
-        else:
-            self.output_record += data
-            self._max_output = max(self._max_output, len(data))
-            self.output_record = self.output_record[-self._max_output:]
+        self.output_record += data
+        self._max_output = max(self._max_output, len(data))
+        self.output_record = self.output_record[-self._max_output:]
         self.last_from_stream = from_stream
 
-# FIXME pull recorder out into in-memory-indexable-data interactor
 
 # set singleton
 Recorder().set_singleton()

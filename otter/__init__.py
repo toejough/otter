@@ -1,2 +1,2 @@
-from .semantic import *
+from .api import *
 from .interactors import *
