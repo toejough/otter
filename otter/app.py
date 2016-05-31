@@ -1,4 +1,8 @@
-"""The How of the application."""
+"""
+The How of the application.
+
+These are pure functions which call the interactors to do work.
+"""
 
 
 import functools
@@ -11,8 +15,9 @@ def output_ends_with(data, *, recorder_interactor):
 
 def write(data, *, write_interactor, recorder_interactor):
     """write & record the given data."""
-    write_interactor.write(data)
+    output = write_interactor.write(data)
     recorder_interactor.record(data, from_stream=True)
+    return output
 
 
 def reset(*, write_interactor, recorder_interactor):

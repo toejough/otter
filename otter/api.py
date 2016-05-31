@@ -58,7 +58,7 @@ class Stream:
             # write the new data
             output = self._write(data)
         else:
-            # reset the writer if there's really data to writ
+            # reset the writer if there's really data to write
             if data:
                 self._reset()
             # write the old data, then the new data
