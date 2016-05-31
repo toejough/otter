@@ -26,13 +26,10 @@ def replace(parent, func_name, replacement_writer, *, recorder_interactor):
     @functools.wraps(getattr(parent, func_name))
     def wrapped(data):
         """wrapped interruption writer."""
-        # don't try anything if there's no data.
-        if not data:
-            return None
-
-        # if stream data was printed last
+        # if stream data was printed last and there is new data to print
         prior_data = recorder_interactor.output_record
         if (
+            data and
             prior_data and
             recorder_interactor.last_from_stream and
             not replacement_writer.is_reset(prior_data)

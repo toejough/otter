@@ -9,8 +9,9 @@ WRITE = sys.stdout.write
 
 def write(data):
     """write the data to stdout."""
-    WRITE(data)
+    output = WRITE(data)
     sys.stdout.flush()
+    return output
 
 
 def reset():

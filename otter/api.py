@@ -53,21 +53,20 @@ class Stream:
         Rewrite data from a new line if the stream's data is not the last output
         recorded.
         """
-        # just return early if there's no data
-        if not data:
-            return None
-
         # if the last recorded output matches
         if self._output_ends_with(self.data):
             # write the new data
-            self._write(data)
+            output = self._write(data)
         else:
-            # reset the writer
-            self._reset()
+            # reset the writer if there's really data to writ
+            if data:
+                self._reset()
             # write the old data, then the new data
-            self._write(self.data + data)
+            output = self._write(self.data + data)
         # update the stream data
         self.data += data
+        # return what the writer returned
+        return output
 
 
 def replace(parent, func_name, write_interactor, *, recorder_interactor=mem_recorder):

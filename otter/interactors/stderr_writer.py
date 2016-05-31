@@ -9,8 +9,9 @@ WRITE = sys.stderr.write
 
 def write(data):
     """write the data to stderr."""
-    WRITE(data)
+    output = WRITE(data)
     sys.stderr.flush()
+    return output
 
 
 def reset():
