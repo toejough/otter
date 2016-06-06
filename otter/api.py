@@ -12,6 +12,7 @@ from .interactors import stdout_writer, stderr_writer, mem_recorder
 
 
 STATE = {}
+DEFAULT_RECORDER = mem_recorder.Recorder()
 
 
 class Stream:
@@ -20,7 +21,7 @@ class Stream:
     def __init__(
         self, *,
         write_interactor=stdout_writer,
-        recorder_interactor=mem_recorder
+        recorder_interactor=DEFAULT_RECORDER
     ):
         """init the state."""
         # initial state.
@@ -46,7 +47,7 @@ class Stream:
         return output
 
 
-def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_interactor=mem_recorder):
+def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_interactor=DEFAULT_RECORDER):
     """watch the output."""
     # get functions replaced in the given parent
     replaced = STATE.get(parent, {})
