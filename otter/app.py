@@ -18,8 +18,9 @@ class Writer:
 
     def _reset(self):
         """reset the output state so that a new stream is obviously new."""
-        if not self._writer.is_reset(self._recorder.output_record):
+        if not self._recorder.is_reset():
             self._writer.reset()
+            self._recorder.record_reset()
 
     def write_stream(self, prior_stream_data, data):
         """
@@ -30,7 +31,7 @@ class Writer:
         Returns the return from the write_interactor.
         """
         # if the last recorded output matches
-        if prior_stream_data and self._recorder.output_record.endswith(prior_stream_data):
+        if self._recorder.last_output_matches(prior_stream_data):
             # just write the new data
             output = self._write(data, from_stream=True)
         # else, as long as there's new data to write,
