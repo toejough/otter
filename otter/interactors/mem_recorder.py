@@ -29,3 +29,5 @@ class Recorder:
 
 # set singleton
 Recorder().set_singleton()
+
+# XXX Make this not a singleton - make it settable.

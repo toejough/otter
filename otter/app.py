@@ -1,75 +1,52 @@
-"""
-Semantic actions, core to the library.
-
-In Clean Architecture terms - the business logic.
-"""
+"""Semantic actions, core to the library."""
 
 
-import functools
+class Writer:
+    """Write from a stream or interruption."""
 
+    def __init__(self, *, write_interactor, recorder_interactor):
+        """init the state."""
+        # set up the interactors
+        self._recorder = recorder_interactor
+        self._writer = write_interactor
 
-def _write(data, *, from_stream=False, write_interactor, recorder_interactor):
-    """write & record the given data."""
-    output = write_interactor.write(data)
-    recorder_interactor.record(data, from_stream=from_stream)
-    return output
+    def _write(self, data, *, from_stream=False):
+        """write & record the given data."""
+        output = self._writer.write(data)
+        self._recorder.record(data, from_stream=from_stream)
+        return output
 
+    def _reset(self):
+        """reset the output state so that a new stream is obviously new."""
+        if not self._writer.is_reset(self._recorder.output_record):
+            self._writer.reset()
 
-def _reset(*, write_interactor, recorder_interactor):
-    """reset the output state so that a new stream is obviously new."""
-    if not write_interactor.is_reset(recorder_interactor.output_record):
-        write_interactor.reset()
+    def write_stream(self, prior_stream_data, data):
+        """
+        Write data from a stream.
 
+        Takes the prior stream data, the new data, and write/record interactors.
 
-def write_from_stream(prior_stream_data, data, *, write_interactor, recorder_interactor):
-    """
-    Write data from a stream.
+        Returns the return from the write_interactor.
+        """
+        # if the last recorded output matches
+        if prior_stream_data and self._recorder.output_record.endswith(prior_stream_data):
+            # just write the new data
+            output = self._write(data, from_stream=True)
+        # else, as long as there's new data to write,
+        # reset the writer & write the whole stream
+        elif data:
+            self._reset()
+            # write the old data, then the new data
+            output = self._write(prior_stream_data + data, from_stream=True)
+        # return what the writer returned
+        return output
 
-    Takes the prior stream data, the new data, and write/record interactors.
-
-    Returns the return from the write_interactor.
-    """
-    # set up the write function
-    write = functools.partial(
-        _write,
-        from_stream=True,
-        write_interactor=write_interactor,
-        recorder_interactor=recorder_interactor
-    )
-    # if the last recorded output matches
-    if prior_stream_data and recorder_interactor.output_record.endswith(prior_stream_data):
-        # write the new data
-        output = write(data)
-    else:
-        # reset the writer if there's really data to write
-        if data:
-            _reset(
-                write_interactor=write_interactor,
-                recorder_interactor=recorder_interactor
-            )
-        # write the old data, then the new data
-        output = write(prior_stream_data + data)
-    # return what the writer returned
-    return output
-
-
-def write_interruption(data, *, write_interactor, recorder_interactor):
-    """interruption writer."""
-    # if stream data was printed last and there is new data to print
-    if (
-        data and
-        # recorder_interactor.output_record and
-        recorder_interactor.last_from_stream
-    ):
-        # reset the output
-        _reset(
-            write_interactor=write_interactor,
-            recorder_interactor=recorder_interactor
-        )
-    # write and record the non-stream output
-    return _write(
-        data,
-        from_stream=False,
-        write_interactor=write_interactor,
-        recorder_interactor=recorder_interactor
-    )
+    def write_interruption(self, data):
+        """interruption writer."""
+        # if stream data was printed last and there is new data to print
+        if data and self._recorder.last_from_stream:
+            # reset the output
+            self._reset()
+        # write and record the non-stream output
+        return self._write(data, from_stream=False)

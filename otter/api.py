@@ -7,7 +7,6 @@ core actions performed.
 
 
 import sys
-import functools
 from . import app
 from .interactors import stdout_writer, stderr_writer, mem_recorder
 
@@ -27,12 +26,11 @@ class Stream:
         # initial state.
         self.data = ''
 
-        # set interactors
-        self._write = functools.partial(
-            app.write_from_stream,
+        # Use app function
+        self._write = app.Writer(
             write_interactor=write_interactor,
             recorder_interactor=recorder_interactor,
-        )
+        ).write_stream
 
     def write(self, data):
         """
@@ -58,15 +56,13 @@ def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_inter
         setattr(parent, func_name, original)
     # get the original function
     func = getattr(parent, func_name)
+    # get the new function
+    write_interruption = app.Writer(
+        write_interactor=write_interactor,
+        recorder_interactor=recorder_interactor,
+    ).write_interruption
     # replace the function
-    setattr(
-        parent, func_name,
-        functools.wraps(func)(functools.partial(
-            app.write_interruption,
-            write_interactor=write_interactor,
-            recorder_interactor=recorder_interactor,
-        ))
-    )
+    setattr(parent, func_name, write_interruption)
     # save the original and the replacement
     replaced[func_name] = {
         'original': func,
