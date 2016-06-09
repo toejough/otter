@@ -17,3 +17,8 @@ def write(data):
 def reset():
     """reset the output."""
     write('\n')
+
+
+def combine(prior_data, new_data):
+    """combine two hunks of data."""
+    return prior_data + new_data
