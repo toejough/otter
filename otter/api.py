@@ -74,10 +74,12 @@ class Stream:
 
 def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_interactor=DEFAULT_RECORDER):
     """watch the output."""
-    def _should_reset(data, last_from_stream):
+    # [ App ]
+    def _should_reset_before_interruption(data, last_from_stream):
         """return whether we should reset the output."""
         return app.should_reset_before_interruption(data, last_from_stream)
 
+    # [ Interactor ]
     def _last_output_from_stream():
         """Return whether the last output was from a stream."""
         return recorder_interactor.last_from_stream
@@ -90,47 +92,59 @@ def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_inter
         recorder_interactor.record(data, from_stream=False)
         return write_interactor.write(data)
 
+    # [ Internal ]
     def write(data):
         """write the data."""
         # Data
         last_from_stream = _last_output_from_stream()
-        should_reset = _should_reset(data, last_from_stream)
+        should_reset = _should_reset_before_interruption(data, last_from_stream)
 
         # IO
         return _write(data, should_reset)
 
-    def _get_original(parent, func_name):
-        """get the original function."""
-        # get functions replaced in the given parent
-        replacements_in_parent = STATE.get(parent, {})
-        func_replacement_data = replacements_in_parent.get(func_name, {})
-        current_func = getattr(parent, func_name)
-        return func_replacement_data.get('original', current_func)
+    # [ Module Private ]
+    def _save_original(parent, func_name):
+        """Save the original function."""
+        # get original
+        original = _get_original(parent, func_name)
+        # save the original
+        replacement_data = _get_replacement_data()
+        replacements_in_parent = replacement_data.get(parent, {})
+        replacements_in_parent[func_name] = original
+        replacement_data[parent] = replacements_in_parent
 
-    def _save_replacement(parent, func_name, original, write):
-        # save the original and the replacement
-        replacements_in_parent = STATE.get(parent, {})
-        replacements_in_parent[func_name] = {
-            'original': original,
-            'replacement': write
-        }
-        # update the global state
-        STATE[parent] = replacements_in_parent
-
-    def _replace_function(parent, func_name, replacement):
-        """replace the function."""
-        setattr(parent, func_name, write)
-
-    # get data
-    original = _get_original(parent, func_name)
-
-    # save replacement
-    _save_replacement(parent, func_name, original, write)
-
-    # replace the function
+    _save_original(parent, func_name)
     _replace_function(parent, func_name, write)
 
 
+# [ Module Private ]
+def _get_original(parent, func_name):
+    """get the original function."""
+    # get functions replaced in the given parent
+    replacement_data = _get_replacement_data()
+    replacements_in_parent = replacement_data.get(parent, {})
+    current_func = _get_function(parent, func_name)
+    return replacements_in_parent.get(func_name, current_func)
+
+
+# [ Global ]
+def _get_replacement_data():
+    """Get the replacement data."""
+    return STATE
+
+
+# [ System ]
+def _get_function(parent, name):
+    """Get the current function."""
+    return getattr(parent, name)
+
+
+def _replace_function(parent, func_name, replacement):
+    """replace the function."""
+    setattr(parent, func_name, replacement)
+
+
+# [ Public ]
 def replace_stds():
     """replace the std streams."""
     replace(sys.stdout, 'write', write_interactor=stdout_writer)
