@@ -26,8 +26,8 @@ class Stream:
         """init the state."""
         # initial state.
         self.data = ''
-        self.write_interactor = write_interactor
-        self.recorder_interactor = recorder_interactor
+        self._write_interactor = write_interactor
+        self._recorder_interactor = recorder_interactor
 
     # [ App ]
     def _should_restart_stream(self, data, last_output_matches):
@@ -37,19 +37,19 @@ class Stream:
     # [ Interactors ]
     def _get_new_stream_data(self, prior_data, new_data):
         """Return the new stream data."""
-        return self.write_interactor.combine(prior_data, new_data)
+        return self._write_interactor.combine(prior_data, new_data)
 
     def _last_output_matches(self, data):
         """return whether the last recorded output matches the stream."""
-        return self.recorder_interactor.last_output_matches(data)
+        return self._recorder_interactor.last_output_matches(data)
 
     def _write(self, data_to_write, should_reset):
         """actually write and record the data."""
-        if should_reset and not self.recorder_interactor.is_reset():
-            self.write_interactor.reset()
-            self.recorder_interactor.record_reset()
-        self.recorder_interactor.record(data_to_write, from_stream=True)
-        return self.write_interactor.write(data_to_write)
+        if should_reset and not self._recorder_interactor.is_reset():
+            self._write_interactor.reset()
+            self._recorder_interactor.record_reset()
+        self._recorder_interactor.record(data_to_write, from_stream=True)
+        return self._write_interactor.write(data_to_write)
 
     # [ Internal ]
     def write(self, data):
