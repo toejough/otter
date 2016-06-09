@@ -83,23 +83,30 @@ def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_inter
     # get the original function
     func = getattr(parent, func_name)
 
-    def _reset(data):
-        """reset the output state so that new data is obviously new."""
-        if app.should_reset_before_interruption(
-            data,
-            recorder_interactor.last_from_stream
-        ) and not recorder_interactor.is_reset():
+    def _should_reset(data, last_from_stream):
+        """return whether we should reset the output."""
+        return app.should_reset_before_interruption(data, last_from_stream)
+
+    def _last_output_from_stream():
+        """Return whether the last output was from a stream."""
+        return recorder_interactor.last_from_stream
+
+    def _write(data, should_reset):
+        """Actually write the data."""
+        if should_reset and not recorder_interactor.is_reset():
             write_interactor.reset()
             recorder_interactor.record_reset()
+        recorder_interactor.record(data, from_stream=False)
+        return write_interactor.write(data)
 
     def write(data):
         """write the data."""
-        _reset(data)
-        output = write_interactor.write(data)
-        recorder_interactor.record(data, from_stream=False)
+        # Data
+        last_from_stream = _last_output_from_stream()
+        should_reset = _should_reset(data, last_from_stream)
 
-        # return what the writer returned
-        return output
+        # IO
+        return _write(data, should_reset)
 
     # replace the function
     setattr(parent, func_name, write)
