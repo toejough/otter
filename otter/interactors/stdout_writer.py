@@ -1,15 +1,19 @@
 """stdout interactor."""
 
+
+# [ Import ]
 import sys
 
 
+# [ Globals ]
 # record early, because this most likely will get replaced.
-WRITE = sys.stdout.write
+_WRITE = sys.stdout.write
 
 
+# [ Public ]
 def write(data):
     """write the data to stdout."""
-    output = WRITE(data)
+    output = _WRITE(data)
     sys.stdout.flush()
     return output
 

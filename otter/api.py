@@ -6,22 +6,27 @@ core actions performed.
 """
 
 
+# [ Import ]
+# [ -Python ]
 import sys
+# [ -Project ]
 from . import app
 from .interactors import stdout_writer, stderr_writer, mem_recorder
 
 
-STATE = {}
-DEFAULT_RECORDER = mem_recorder.Recorder()
+# [ Globals ]
+_STATE = {}
+_DEFAULT_RECORDER = mem_recorder.Recorder()
 
 
+# [ Public ]
 class Stream:
     """Stream."""
 
     def __init__(
         self, *,
         write_interactor=stdout_writer,
-        recorder_interactor=DEFAULT_RECORDER
+        recorder_interactor=_DEFAULT_RECORDER
     ):
         """init the state."""
         # initial state.
@@ -72,7 +77,7 @@ class Stream:
         return self._write(data_to_write, should_restart_stream)
 
 
-def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_interactor=DEFAULT_RECORDER):
+def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_interactor=_DEFAULT_RECORDER):
     """watch the output."""
     # [ App ]
     def _should_reset_before_interruption(data, last_from_stream):
@@ -92,16 +97,6 @@ def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_inter
         recorder_interactor.record(data, from_stream=False)
         return write_interactor.write(data)
 
-    # [ Internal ]
-    def write(data):
-        """write the data."""
-        # Data
-        last_from_stream = _last_output_from_stream()
-        should_reset = _should_reset_before_interruption(data, last_from_stream)
-
-        # IO
-        return _write(data, should_reset)
-
     # [ Module Private ]
     def _save_original(parent, func_name):
         """Save the original function."""
@@ -113,11 +108,28 @@ def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_inter
         replacements_in_parent[func_name] = original
         replacement_data[parent] = replacements_in_parent
 
+    # [ Internal ]
+    def write(data):
+        """write the data."""
+        # Data
+        last_from_stream = _last_output_from_stream()
+        should_reset = _should_reset_before_interruption(data, last_from_stream)
+
+        # IO
+        return _write(data, should_reset)
+
     _save_original(parent, func_name)
     _replace_function(parent, func_name, write)
 
 
-# [ Module Private ]
+def replace_stds():
+    """replace the std streams."""
+    replace(sys.stdout, 'write', write_interactor=stdout_writer)
+    replace(sys.stderr, 'write', write_interactor=stderr_writer)
+
+
+# [ Private ]
+# [ -Module Private ]
 def _get_original(parent, func_name):
     """get the original function."""
     # get functions replaced in the given parent
@@ -127,13 +139,13 @@ def _get_original(parent, func_name):
     return replacements_in_parent.get(func_name, current_func)
 
 
-# [ Global ]
+# [ -Global ]
 def _get_replacement_data():
     """Get the replacement data."""
-    return STATE
+    return _STATE
 
 
-# [ System ]
+# [ -System ]
 def _get_function(parent, name):
     """Get the current function."""
     return getattr(parent, name)
@@ -142,10 +154,3 @@ def _get_function(parent, name):
 def _replace_function(parent, func_name, replacement):
     """replace the function."""
     setattr(parent, func_name, replacement)
-
-
-# [ Public ]
-def replace_stds():
-    """replace the std streams."""
-    replace(sys.stdout, 'write', write_interactor=stdout_writer)
-    replace(sys.stderr, 'write', write_interactor=stderr_writer)

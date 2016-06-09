@@ -1,15 +1,19 @@
 """stderr interactor."""
 
+
+# [ Import ]
 import sys
 
 
+# [ Globals ]
 # record early, because this most likely will get replaced.
-WRITE = sys.stderr.write
+_WRITE = sys.stderr.write
 
 
+# [ Public ]
 def write(data):
     """write the data to stderr."""
-    output = WRITE(data)
+    output = _WRITE(data)
     sys.stderr.flush()
     return output
 
