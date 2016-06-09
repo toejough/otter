@@ -29,17 +29,19 @@ class Stream:
         self.write_interactor = write_interactor
         self.recorder_interactor = recorder_interactor
 
+    # [ App ]
     def _should_restart_stream(self, data, last_output_matches):
         """return whether the stream should be restarted."""
         return app.should_restart_stream(data, last_output_matches)
 
-    def _get_new_stream_data(self, data):
+    # [ Interactors ]
+    def _get_new_stream_data(self, prior_data, new_data):
         """Return the new stream data."""
-        return self.write_interactor.combine(self.data, data)
+        return self.write_interactor.combine(prior_data, new_data)
 
-    def _last_output_matches(self):
+    def _last_output_matches(self, data):
         """return whether the last recorded output matches the stream."""
-        return self.recorder_interactor.last_output_matches(self.data)
+        return self.recorder_interactor.last_output_matches(data)
 
     def _write(self, data_to_write, should_reset):
         """actually write and record the data."""
@@ -49,6 +51,7 @@ class Stream:
         self.recorder_interactor.record(data_to_write, from_stream=True)
         return self.write_interactor.write(data_to_write)
 
+    # [ Internal ]
     def write(self, data):
         """
         write the data.
@@ -57,8 +60,8 @@ class Stream:
         recorded.
         """
         # Gather all the required data
-        last_output_matches = self._last_output_matches()
-        new_stream_data = self._get_new_stream_data(data)
+        last_output_matches = self._last_output_matches(self.data)
+        new_stream_data = self._get_new_stream_data(self.data, data)
         should_restart_stream = self._should_restart_stream(data, last_output_matches)
         data_to_write = new_stream_data if should_restart_stream else data
 
