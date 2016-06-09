@@ -74,15 +74,6 @@ class Stream:
 
 def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_interactor=DEFAULT_RECORDER):
     """watch the output."""
-    # get functions replaced in the given parent
-    replaced = STATE.get(parent, {})
-    # if this function is replaced, restore it before re-replacing
-    if func_name in replaced:
-        original = replaced[func_name]['original']
-        setattr(parent, func_name, original)
-    # get the original function
-    func = getattr(parent, func_name)
-
     def _should_reset(data, last_from_stream):
         """return whether we should reset the output."""
         return app.should_reset_before_interruption(data, last_from_stream)
@@ -108,15 +99,36 @@ def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_inter
         # IO
         return _write(data, should_reset)
 
+    def _get_original(parent, func_name):
+        """get the original function."""
+        # get functions replaced in the given parent
+        replacements_in_parent = STATE.get(parent, {})
+        func_replacement_data = replacements_in_parent.get(func_name, {})
+        current_func = getattr(parent, func_name)
+        return func_replacement_data.get('original', current_func)
+
+    def _save_replacement(parent, func_name, original, write):
+        # save the original and the replacement
+        replacements_in_parent = STATE.get(parent, {})
+        replacements_in_parent[func_name] = {
+            'original': original,
+            'replacement': write
+        }
+        # update the global state
+        STATE[parent] = replacements_in_parent
+
+    def _replace_function(parent, func_name, replacement):
+        """replace the function."""
+        setattr(parent, func_name, write)
+
+    # get data
+    original = _get_original(parent, func_name)
+
+    # save replacement
+    _save_replacement(parent, func_name, original, write)
+
     # replace the function
-    setattr(parent, func_name, write)
-    # save the original and the replacement
-    replaced[func_name] = {
-        'original': func,
-        'replacement': replaced
-    }
-    # update the global state
-    STATE[parent] = replaced
+    _replace_function(parent, func_name, write)
 
 
 def replace_stds():
