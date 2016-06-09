@@ -1,7 +1,7 @@
 """Semantic actions, core to the library."""
 
 
-def restart_stream(data, last_output_matches):
+def should_restart_stream(data, last_output_matches):
     """
     Write data from a stream.
 

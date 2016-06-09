@@ -42,14 +42,14 @@ class Stream:
         Rewrite data from a new line if the stream's data is not the last output
         recorded.
         """
-        if app.restart_stream(data, self.recorder_interactor.last_output_matches(self.data)):
+        if app.should_restart_stream(data, self.recorder_interactor.last_output_matches(self.data)):
             self._reset()
-            output = self.write_interactor.write(self.data + data)
-            self.recorder_interactor.record(self.data + data, from_stream=True)
+            data_to_write = self.data + data
         else:
-            output = self.write_interactor.write(data)
-            self.recorder_interactor.record(data, from_stream=True)
+            data_to_write = data
 
+        output = self.write_interactor.write(data_to_write)
+        self.recorder_interactor.record(data_to_write, from_stream=True)
         # update the stream data
         self.data += data
         # return what the writer returned
