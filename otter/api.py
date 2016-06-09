@@ -78,15 +78,13 @@ def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_inter
 
     def write(data):
         """write the data."""
-        write_data = app.write_interruption(
+        if app.should_reset_before_interruption(
             data,
             recorder_interactor.last_from_stream
-        )
-
-        if write_data['do reset']:
+        ):
             _reset()
-        output = write_interactor.write(write_data['data'])
-        recorder_interactor.record(write_data['data'], from_stream=False)
+        output = write_interactor.write(data)
+        recorder_interactor.record(data, from_stream=False)
 
         # return what the writer returned
         return output

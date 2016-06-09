@@ -27,11 +27,7 @@ def write_stream(prior_stream_data, data, last_output_matches):
     return output
 
 
-def write_interruption(data, last_from_stream):
+def should_reset_before_interruption(data, last_from_stream):
     """interruption writer."""
     # if stream data was printed last and there is new data to print
-    output = {
-        'data': data,
-        'do reset': data and last_from_stream
-    }
-    return output
+    return data and last_from_stream
