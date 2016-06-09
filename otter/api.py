@@ -42,16 +42,13 @@ class Stream:
         Rewrite data from a new line if the stream's data is not the last output
         recorded.
         """
-        write_data = app.write_stream(
-            self.data,
-            data,
-            self.recorder_interactor.last_output_matches(self.data),
-        )
-
-        if write_data['do reset']:
+        if app.restart_stream(data, self.recorder_interactor.last_output_matches(self.data)):
             self._reset()
-        output = self.write_interactor.write(write_data['data'])
-        self.recorder_interactor.record(write_data['data'], from_stream=True)
+            output = self.write_interactor.write(self.data + data)
+            self.recorder_interactor.record(self.data + data, from_stream=True)
+        else:
+            output = self.write_interactor.write(data)
+            self.recorder_interactor.record(data, from_stream=True)
 
         # update the stream data
         self.data += data
@@ -70,19 +67,18 @@ def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_inter
     # get the original function
     func = getattr(parent, func_name)
 
-    def _reset():
+    def _reset(data):
         """reset the output state so that new data is obviously new."""
-        if not recorder_interactor.is_reset():
+        if app.should_reset_before_interruption(
+            data,
+            recorder_interactor.last_from_stream
+        ) and not recorder_interactor.is_reset():
             write_interactor.reset()
             recorder_interactor.record_reset()
 
     def write(data):
         """write the data."""
-        if app.should_reset_before_interruption(
-            data,
-            recorder_interactor.last_from_stream
-        ):
-            _reset()
+        _reset(data)
         output = write_interactor.write(data)
         recorder_interactor.record(data, from_stream=False)
 
