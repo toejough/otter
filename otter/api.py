@@ -26,12 +26,17 @@ class Stream:
         """init the state."""
         # initial state.
         self.data = ''
+        self.write_interactor = write_interactor
+        self.recorder_interactor = recorder_interactor
 
         # Use app function
-        self._write = app.Writer(
-            write_interactor=write_interactor,
-            recorder_interactor=recorder_interactor,
-        ).write_stream
+        self._write = app.Writer(recorder_interactor=recorder_interactor).write_stream
+
+    def _reset(self):
+        """reset the output state so that a new stream is obviously new."""
+        if not self.recorder_interactor.is_reset():
+            self.write_interactor.reset()
+            self.recorder_interactor.record_reset()
 
     def write(self, data):
         """
@@ -40,7 +45,13 @@ class Stream:
         Rewrite data from a new line if the stream's data is not the last output
         recorded.
         """
-        output = self._write(self.data, data)
+        write_data = self._write(self.data, data)
+
+        if write_data['do reset']:
+            self._reset()
+        output = self.write_interactor.write(write_data['to write'])
+        self.recorder_interactor.record(write_data['to record'], from_stream=write_data['from stream'])
+
         # update the stream data
         self.data += data
         # return what the writer returned
@@ -58,12 +69,28 @@ def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_inter
     # get the original function
     func = getattr(parent, func_name)
     # get the new function
-    write_interruption = app.Writer(
-        write_interactor=write_interactor,
-        recorder_interactor=recorder_interactor,
-    ).write_interruption
+    write_interruption = app.Writer(recorder_interactor=recorder_interactor).write_interruption
+
+    def _reset():
+        """reset the output state so that new data is obviously new."""
+        if not recorder_interactor.is_reset():
+            write_interactor.reset()
+            recorder_interactor.record_reset()
+
+    def write(data):
+        """write the data."""
+        write_data = write_interruption(data)
+
+        if write_data['do reset']:
+            _reset()
+        output = write_interactor.write(write_data['to write'])
+        recorder_interactor.record(write_data['to record'], from_stream=write_data['from stream'])
+
+        # return what the writer returned
+        return output
+
     # replace the function
-    setattr(parent, func_name, write_interruption)
+    setattr(parent, func_name, write)
     # save the original and the replacement
     replaced[func_name] = {
         'original': func,
