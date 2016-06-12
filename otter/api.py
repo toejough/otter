@@ -88,7 +88,7 @@ def replace_stds():
 def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_interactor=_DEFAULT_RECORDER):
     """watch the output."""
     _save_original(parent, func_name)
-    write = InterruptionWriter(write_interactor, recorder_interactor)
+    write = InterruptionWriter(write_interactor, recorder_interactor).write
     setattr(parent, func_name, write)
 
 
@@ -102,7 +102,7 @@ class InterruptionWriter:
 
     # [ Public ]
     # [ -Internal ]
-    def __call__(self, data):
+    def write(self, data):
         """write the data."""
         # Data
         last_from_stream = self._last_output_from_stream()
