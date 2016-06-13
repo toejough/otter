@@ -37,10 +37,6 @@ class Output:
         """last output matches."""
         return self._recorder.last_output_matches(given_output)
 
-    def is_reset(self):
-        """return whether the stream is reset."""
-        return self._recorder.is_reset()
-
     def last_from_stream(self):
         """Return whether the last output was from a stream."""
         return self._recorder.last_from_stream
