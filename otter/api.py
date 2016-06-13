@@ -11,28 +11,22 @@ core actions performed.
 import sys
 # [ -Project ]
 from . import app
-from .interactors import stdout_writer, stderr_writer, mem_recorder
+from .interactors import stdout_writer, stderr_writer
 
 
 # [ Globals ]
 _REPLACED_FUNCTIONS = {}
-_DEFAULT_RECORDER = mem_recorder.Recorder()
 
 
 # [ Public ]
 class Stream:
     """Stream."""
 
-    def __init__(
-        self, *,
-        write_interactor=stdout_writer,
-        recorder_interactor=_DEFAULT_RECORDER
-    ):
+    def __init__(self, *, output_interactor=stdout_writer):
         """init the state."""
         # initial state.
         self.data = ''
-        self._write_interactor = write_interactor
-        self._recorder_interactor = recorder_interactor
+        self._output_interactor = output_interactor
 
     # [ Public ]
     # [ -Internal ]
@@ -64,41 +58,40 @@ class Stream:
     # [ -Interactors ]
     def _get_new_stream_data(self, prior_data, new_data):
         """Return the new stream data."""
-        return self._write_interactor.combine(prior_data, new_data)
+        return self._output_interactor.combine(prior_data, new_data)
 
     def _last_output_matches(self, data):
         """return whether the last recorded output matches the stream."""
-        return self._recorder_interactor.last_output_matches(data)
+        return self._output_interactor.last_output_matches(data)
 
     def _write(self, data_to_write, should_reset):
         """actually write and record the data."""
-        if should_reset and not self._recorder_interactor.is_reset():
-            self._write_interactor.reset()
-            self._recorder_interactor.record_reset()
-        self._recorder_interactor.record(data_to_write, from_stream=True)
-        return self._write_interactor.write(data_to_write)
+        if should_reset and not self._output_interactor.is_reset():
+            self._output_interactor.reset()
+            self._output_interactor.record_reset()
+        self._output_interactor.record(data_to_write, from_stream=True)
+        return self._output_interactor.write(data_to_write)
 
 
 def replace_stds():
     """replace the std streams."""
-    replace(sys.stdout, 'write', write_interactor=stdout_writer)
-    replace(sys.stderr, 'write', write_interactor=stderr_writer)
+    replace(sys.stdout, 'write', output_interactor=stdout_writer)
+    replace(sys.stderr, 'write', output_interactor=stderr_writer)
 
 
-def replace(parent, func_name, *, write_interactor=stdout_writer, recorder_interactor=_DEFAULT_RECORDER):
+def replace(parent, func_name, *, output_interactor=stdout_writer):
     """watch the output."""
     _save_original(parent, func_name)
-    write = InterruptionWriter(write_interactor, recorder_interactor).write
+    write = InterruptionWriter(output_interactor).write
     setattr(parent, func_name, write)
 
 
 class InterruptionWriter:
     """Interruption Writer."""
 
-    def __init__(self, write_interactor, recorder_interactor):
+    def __init__(self, output_interactor):
         """Build an interruption function."""
-        self._write_interactor = write_interactor
-        self._recorder_interactor = recorder_interactor
+        self._output_interactor = output_interactor
 
     # [ Public ]
     # [ -Internal ]
@@ -120,15 +113,15 @@ class InterruptionWriter:
     # [ -Interactor ]
     def _last_output_from_stream(self):
         """Return whether the last output was from a stream."""
-        return self._recorder_interactor.last_from_stream
+        return self._output_interactor.last_from_stream()
 
     def _write(self, data, should_reset):
         """Actually write the data."""
-        if should_reset and not self._recorder_interactor.is_reset():
-            self._write_interactor.reset()
-            self._recorder_interactor.record_reset()
-        self._recorder_interactor.record(data, from_stream=False)
-        return self._write_interactor.write(data)
+        if should_reset and not self._output_interactor.is_reset():
+            self._output_interactor.reset()
+            self._output_interactor.record_reset()
+        self._output_interactor.record(data, from_stream=False)
+        return self._output_interactor.write(data)
 
 
 # [ Private ]
