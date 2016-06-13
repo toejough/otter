@@ -66,11 +66,9 @@ class Stream:
 
     def _write(self, data_to_write, should_reset):
         """actually write and record the data."""
-        if should_reset and not self._output_interactor.is_reset():
+        if should_reset:
             self._output_interactor.reset()
-            self._output_interactor.record_reset()
-        self._output_interactor.record(data_to_write, from_stream=True)
-        return self._output_interactor.write(data_to_write)
+        return self._output_interactor.write(data_to_write, from_stream=True)
 
 
 def replace_stds():
@@ -117,11 +115,9 @@ class InterruptionWriter:
 
     def _write(self, data, should_reset):
         """Actually write the data."""
-        if should_reset and not self._output_interactor.is_reset():
+        if should_reset:
             self._output_interactor.reset()
-            self._output_interactor.record_reset()
-        self._output_interactor.record(data, from_stream=False)
-        return self._output_interactor.write(data)
+        return self._output_interactor.write(data, from_stream=False)
 
 
 # [ Private ]

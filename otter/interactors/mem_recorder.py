@@ -24,10 +24,6 @@ class _Recorder:
         if data:
             self.last_from_stream = from_stream
 
-    def record_reset(self):
-        """Record a reset, explicitly."""
-        self._output_record += '\n'
-
     def last_output_matches(self, given_output):
         """Return True if the last output matches the given output."""
         return given_output and self._output_record.endswith(given_output)

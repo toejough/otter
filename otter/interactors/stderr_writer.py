@@ -15,16 +15,18 @@ _RECORDER = mem_recorder.get_recorder()
 
 
 # [ Public ]
-def write(data):
-    """write the data to stderr."""
+def write(data, *, from_stream=False):
+    """write the data to stdout."""
     output = _WRITE(data)
     sys.stderr.flush()
+    _RECORDER.record(data, from_stream=from_stream)
     return output
 
 
 def reset():
     """reset the output."""
-    write('\n')
+    if not _RECORDER.is_reset():
+        write('\n')
 
 
 def combine(prior_data, new_data):
@@ -34,7 +36,6 @@ def combine(prior_data, new_data):
 
 last_output_matches = _RECORDER.last_output_matches
 is_reset = _RECORDER.is_reset
-record_reset = _RECORDER.record_reset
 record = _RECORDER.record
 
 
