@@ -22,7 +22,7 @@ _REPLACED_FUNCTIONS = {}
 class Stream:
     """Stream."""
 
-    def __init__(self, *, output_interactor=stdout_writer):
+    def __init__(self, *, output_interactor=stdout_writer.get_outputter()):
         """init the state."""
         # initial state.
         self.data = ''
@@ -73,11 +73,11 @@ class Stream:
 
 def replace_stds():
     """replace the std streams."""
-    replace(sys.stdout, 'write', output_interactor=stdout_writer)
-    replace(sys.stderr, 'write', output_interactor=stderr_writer)
+    replace(sys.stdout, 'write', output_interactor=stdout_writer.get_outputter())
+    replace(sys.stderr, 'write', output_interactor=stderr_writer.get_outputter())
 
 
-def replace(parent, func_name, *, output_interactor=stdout_writer):
+def replace(parent, func_name, *, output_interactor=stdout_writer.get_outputter()):
     """watch the output."""
     _save_original(parent, func_name)
     write = InterruptionWriter(output_interactor).write
