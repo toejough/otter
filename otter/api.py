@@ -11,7 +11,7 @@ core actions performed.
 import sys
 # [ -Project ]
 from . import app
-from .interactors import stdout_writer, stderr_writer
+from .interactors import stdout_writer, stderr_writer, output
 
 
 # [ Globals ]
@@ -39,7 +39,7 @@ class Stream:
         """
         # Gather all the required data
         last_output_matches = self._last_output_matches(self.data)
-        new_stream_data = self._get_new_stream_data(self.data, data)
+        new_stream_data = self._get_updated_data(data)
         should_restart_stream = self._should_restart_stream(data, last_output_matches)
         data_to_write = new_stream_data if should_restart_stream else data
 
@@ -56,10 +56,6 @@ class Stream:
         return app.should_restart_stream(data, last_output_matches)
 
     # [ -Interactors ]
-    def _get_new_stream_data(self, prior_data, new_data):
-        """Return the new stream data."""
-        return self._output_interactor.combine(prior_data, new_data)
-
     def _last_output_matches(self, data):
         """return whether the last recorded output matches the stream."""
         return self._output_interactor.last_output_matches(data)
@@ -69,6 +65,11 @@ class Stream:
         if should_reset:
             self._output_interactor.reset()
         return self._output_interactor.write(data_to_write, from_stream=True)
+
+    # [ -Output ]
+    def _get_updated_data(self, new_data):
+        """return the stream data, updated with the new data."""
+        return output.combine(self.data, new_data)
 
 
 def replace_stds():
