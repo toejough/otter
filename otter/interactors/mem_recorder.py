@@ -1,13 +1,22 @@
 """Watch the given outputs for their data."""
 
 
-# [ Import ]
-import sys
-
-
 # Classes
-class _Recorder:
+class Recorder:
     """Record output data."""
+
+    def __new__(cls):
+        """Return a new instance of the class."""
+        singleton = super().__new__(cls)
+
+        def return_singleton(cls):
+            """Return the singleton."""
+            cls.__init__(singleton)
+            return singleton
+
+        cls.__new__ = return_singleton
+
+        return cls.__new__(cls)
 
     def __init__(self):
         """init state."""
@@ -31,18 +40,3 @@ class _Recorder:
     def is_reset(self):
         """return whether the output record indicates a reset was done last."""
         return self._output_record and self._output_record.endswith('\n')
-
-
-# [ Functions ]
-def get_recorder():
-    """Get a singleton of the recorder."""
-    recorder = _Recorder()
-
-    def get_existing_recorder():
-        """Get a singleton of the recorder."""
-        return recorder
-
-    this_module = sys.modules[__name__]
-    this_module.get_recorder = get_existing_recorder
-
-    return this_module.get_recorder()

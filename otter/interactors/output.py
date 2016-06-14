@@ -15,7 +15,7 @@ class Output:
         """init the state."""
         self._write = writer.write
         self._flush = writer.flush
-        self._recorder = mem_recorder.get_recorder()
+        self._recorder = mem_recorder.Recorder()
 
     # [ Public ]
     # [ -Internal ]
