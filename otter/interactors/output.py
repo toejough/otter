@@ -3,51 +3,63 @@
 
 # [ Import ]
 # [ -Python ]
-# [ -Project ]
-from . import mem_recorder
+import sys
 
 
 # [ Public ]
-class Output:
-    """Output class."""
+class OutputDevice:
+    """The output device."""
 
-    def __init__(self, writer):
-        """init the state."""
-        self._write = writer.write
-        self._flush = writer.flush
-        self._recorder = mem_recorder.Recorder()
+    _write = sys.stdout.write
+    _flush = sys.stdout.flush
 
-    # [ Public ]
-    # [ -Internal ]
-    def write(self, data, *, from_stream=False):
-        """write the data to stdout."""
-        output = self._write(data)
-        self._flush()
-        self._recorder.record(data, from_stream=from_stream)
-        return output
+    def __init__(self):
+        """Init the state."""
+        self._is_reset = False
 
     def reset(self):
-        """reset the output."""
-        if not self._is_reset():
-            self.write('\n')
+        """Reset the device."""
+        if not self._is_reset:
+            self._write('\n')
+            self._flush()
+            self._is_reset = True
 
-    # [ -Recorder ]
-    def last_output_matches(self, given_output):
-        """last output matches."""
-        return self._recorder.last_output_matches(given_output)
-
-    def last_from_stream(self):
-        """Return whether the last output was from a stream."""
-        return self._recorder.last_from_stream
-
-    # [ Private ]
-    # [ -Recorder ]
-    def _is_reset(self):
-        """return whether the output is reset."""
-        return self._recorder.is_reset()
+    def write(self, data, output_mechanism):
+        """Write data to the device via the given output mechanism."""
+        output_mechanism.write(data)
+        self._is_reset = data.endswith('\n')
 
 
-# [ Args ]
-def combine(prior_data, new_data):
-    """combine two hunks of data."""
-    return prior_data + new_data
+class StdOutOutputMechanism:
+    """The stdout output mechanism."""
+
+    _write = sys.stdout.write
+    _flush = sys.stdout.flush
+
+    def write(self, data):
+        """write the data."""
+        output = self._write(data)
+        self._flush()
+        return output
+
+
+class StdErrOutputMechanism:
+    """The stderr output mechanism."""
+
+    _write = sys.stderr.write
+    _flush = sys.stderr.flush
+
+    def write(self, data):
+        """write the data."""
+        output = self._write(data)
+        self._flush()
+        return output
+
+
+class Recorder:
+    """Record output data."""
+
+    def __init__(self, initial_data):
+        """init state."""
+        self.last_output = initial_data
+        self.last_from_stream = False

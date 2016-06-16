@@ -11,22 +11,26 @@ core actions performed.
 import sys
 # [ -Project ]
 from . import app
-from .interactors import stdout_writer, stderr_writer, output
+from .interactors.output import StdOutOutputMechanism, StdErrOutputMechanism, Recorder, OutputDevice
 
 
 # [ Globals ]
 _REPLACED_FUNCTIONS = {}
+
+_OUTPUT_DEVICE = OutputDevice()
+_RECORDER = Recorder('')
+_STD_OUT = StdOutOutputMechanism()
+_STD_ERR = StdErrOutputMechanism()
 
 
 # [ Public ]
 class Stream:
     """Stream."""
 
-    def __init__(self, *, output_interactor=stdout_writer.get_outputter()):
+    def __init__(self):
         """init the state."""
         # initial state.
         self.data = ''
-        self._output_interactor = output_interactor
 
     # [ Public ]
     # [ -Internal ]
@@ -58,39 +62,38 @@ class Stream:
     # [ -Interactors ]
     def _last_output_matches(self, data):
         """return whether the last recorded output matches the stream."""
-        return self._output_interactor.last_output_matches(data)
+        return _RECORDER.last_output == data
 
     def _write(self, data_to_write, should_reset):
         """actually write and record the data."""
         if should_reset:
-            self._output_interactor.reset()
-        return self._output_interactor.write(data_to_write, from_stream=True)
+            _OUTPUT_DEVICE.reset()
+        output = _OUTPUT_DEVICE.write(data_to_write, _STD_OUT)
+        _RECORDER.last_output = self.data
+        _RECORDER.last_from_stream = True
+        return output
 
-    # [ -Output ]
+    # [ -Data ]
     def _get_updated_data(self, new_data):
         """return the stream data, updated with the new data."""
-        return output.combine(self.data, new_data)
+        return self.data + new_data
 
 
 def replace_stds():
     """replace the std streams."""
-    replace(sys.stdout, 'write', output_interactor=stdout_writer.get_outputter())
-    replace(sys.stderr, 'write', output_interactor=stderr_writer.get_outputter())
+    replace(sys.stdout, 'write')
+    # replace(sys.stderr, 'write')
 
 
-def replace(parent, func_name, *, output_interactor=stdout_writer.get_outputter()):
+def replace(parent, func_name):
     """watch the output."""
     _save_original(parent, func_name)
-    write = InterruptionWriter(output_interactor).write
+    write = InterruptionWriter().write
     setattr(parent, func_name, write)
 
 
 class InterruptionWriter:
     """Interruption Writer."""
-
-    def __init__(self, output_interactor):
-        """Build an interruption function."""
-        self._output_interactor = output_interactor
 
     # [ Public ]
     # [ -Internal ]
@@ -112,13 +115,16 @@ class InterruptionWriter:
     # [ -Interactor ]
     def _last_output_from_stream(self):
         """Return whether the last output was from a stream."""
-        return self._output_interactor.last_from_stream()
+        return _RECORDER.last_from_stream
 
     def _write(self, data, should_reset):
         """Actually write the data."""
         if should_reset:
-            self._output_interactor.reset()
-        return self._output_interactor.write(data, from_stream=False)
+            _OUTPUT_DEVICE.reset()
+        output = _OUTPUT_DEVICE.write(data, _STD_OUT)
+        _RECORDER.last_output = data
+        _RECORDER.last_from_stream = False
+        return output
 
 
 # [ Private ]
