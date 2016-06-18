@@ -16,8 +16,8 @@ class OutputDevice:
     def __init__(self, initial_data=''):
         """Init the state."""
         self._is_reset = False
-        self.last_output = initial_data
-        self.last_from_stream = False
+        self._last_output = initial_data
+        self._last_from_stream = False
 
     def reset(self):
         """Reset the device."""
@@ -34,37 +34,40 @@ class OutputDevice:
 
     # [ Private ]
     # [ -Internal ]
-    def write(self, stream_data):
+    def write_stream(self, stream_data):
         """actually write and record the data."""
-        should_reset = self._should_restart_stream(stream_data, self._last_output_matches(stream_data))
-        self._reset(should_reset)
-        self._write_to_device(stream_data)
-        self._record_stream_written(stream_data)
+        last_output_matches = self._last_output and stream_data.startswith(self._last_output)
+        if stream_data and not last_output_matches:
+            self.reset()
+        if last_output_matches:
+            stream_data = stream_data[len(self._last_output):]
+        self.old_write(stream_data)
+        self._last_output = stream_data
+        self._last_from_stream = True
 
-    # [ -Logic ]
-    def _should_restart_stream(self, data_exists, last_output_matches_data):
-        """return whether the stream should be restarted."""
-        return data_exists and not last_output_matches_data
+    # [ Private ]
+    # [ -App ]
+    def _should_reset_before_interruption(self, data, last_from_stream):
+        """return whether we should reset the output."""
+        return data and last_from_stream
 
-    # [ -Interactors ]
-    def _last_output_matches(self, data):
-        """return whether the last recorded output matches the stream."""
-        return self.last_output and data.startswith(self.last_output)
+    # [ -Interactor ]
+    def _last_output_from_stream(self):
+        """Return whether the last output was from a stream."""
+        return self._last_from_stream
 
-    def _reset(self, should_reset):
-        """reset if we should."""
+    def write_interruption(self, data):
+        """Actually write the data."""
+        # Data
+        last_from_stream = self._last_output_from_stream()
+        should_reset = self._should_reset_before_interruption(data, last_from_stream)
+
         if should_reset:
             self.reset()
-
-    def _write_to_device(self, data_to_write):
-        """write to the device."""
-        if self._last_output_matches(data_to_write):
-            data_to_write = data_to_write[len(self.last_output):]
-        self.old_write(data_to_write)
-
-    def _record_stream_written(self, data):
-        self.last_output = data
-        self.last_from_stream = True
+        output = self.old_write(data)
+        self._last_output = data
+        self._last_from_stream = False
+        return output
 
 
 class StdOutOutputMechanism:

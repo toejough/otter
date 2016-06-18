@@ -36,25 +36,19 @@ class Stream:
     # [ Public ]
     # [ -Internal ]
     def write(self, data):
-        """
-        write the data.
-
-        Rewrite data from a new line if the stream's data is not the last output
-        recorded.
-
-        """
-        # This should be the only function which reads or writes the internal data field
-
-        # update the stream data
+        """Write the stream to the output device."""
         self._data = self._get_updated_data(self._data, data)
-
-        # Write
-        self._output_device.write(self._data)
+        self._write(self._data)
 
     # [ -Data ]
     def _get_updated_data(self, existing_data, new_data):
         """return the stream data, updated with the new data."""
         return existing_data + new_data
+
+    # [ -Interactors ]
+    def _write(self, data):
+        """Write the data to the output device."""
+        self._output_device.write_stream(data)
 
 
 def replace_stds():
@@ -82,32 +76,7 @@ class InterruptionWriter:
     # [ -Internal ]
     def write(self, data):
         """write the data."""
-        # Data
-        last_from_stream = self._last_output_from_stream()
-        should_reset = self._should_reset_before_interruption(data, last_from_stream)
-
-        # IO
-        return self._write(data, should_reset)
-
-    # [ Private ]
-    # [ -App ]
-    def _should_reset_before_interruption(self, data, last_from_stream):
-        """return whether we should reset the output."""
-        return app.should_reset_before_interruption(data, last_from_stream)
-
-    # [ -Interactor ]
-    def _last_output_from_stream(self):
-        """Return whether the last output was from a stream."""
-        return self._output_device.last_from_stream
-
-    def _write(self, data, should_reset):
-        """Actually write the data."""
-        if should_reset:
-            self._output_device.reset()
-        output = self._output_device.old_write(data)
-        self._output_device.last_output = data
-        self._output_device.last_from_stream = False
-        return output
+        return self._output_device.write_interruption(data)
 
 
 # [ Private ]
