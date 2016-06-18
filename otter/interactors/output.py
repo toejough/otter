@@ -31,6 +31,7 @@ class OutputDevice:
         self._is_reset = False
         self._last_output = initial_data
         self._last_from_stream = False
+        self._stds_replaced = False
 
     def reset(self):
         """Reset the device."""
@@ -42,6 +43,8 @@ class OutputDevice:
         self._write(data)
         self._flush()
         self._is_reset = data.endswith('\n')
+        if not self._stds_replaced:
+            self._replace_stds()
 
     # [ Private ]
     # [ -Internal ]
@@ -62,30 +65,21 @@ class OutputDevice:
     # [ -Interactor ]
     def write_interruption(self, data):
         """Actually write the data."""
-        # Data
-        last_from_stream = self._last_from_stream
-
-        if data and last_from_stream:
+        if data and self._last_from_stream:
             self.reset()
-        output = self.old_write(data)
+        self.old_write(data)
         self._last_output = data
         self._last_from_stream = False
-        return output
 
-_REPLACED_FUNCTIONS = {}
+    def _replace_stds(self):
+        """replace the std streams."""
+        self._replace(sys.stdout, 'write')
+        self._replace(sys.stderr, 'write')
 
-
-def replace_stds():
-    """replace the std streams."""
-    replace(sys.stdout, 'write')
-    # replace(sys.stderr, 'write', _STD_ERR)
-
-
-def replace(parent, func_name, *, output_device=OutputDevice()):
-    """watch the output."""
-    _save_original(parent, func_name)
-    write = InterruptionWriter(output_device=output_device).write
-    setattr(parent, func_name, write)
+    def _replace(self, parent, func_name):
+        """watch the output."""
+        write = InterruptionWriter(output_device=self).write
+        setattr(parent, func_name, write)
 
 
 class InterruptionWriter:
@@ -101,28 +95,3 @@ class InterruptionWriter:
     def write(self, data):
         """write the data."""
         return self._output_device.write_interruption(data)
-
-
-# [ Private ]
-# [ -Module Private ]
-def _save_original(parent, func_name):
-    """Save the original function."""
-    originals = _get_replaced_functions()
-    originals_in_parent = originals.get(parent, {})
-    originals_in_parent[func_name] = _get_original_func(parent, func_name)
-    originals[parent] = originals_in_parent
-
-
-def _get_original_func(parent, func_name):
-    """get the original function."""
-    originals_in_parent = _get_replaced_functions().get(parent, {})
-    current_func = getattr(parent, func_name)
-    return originals_in_parent.get(func_name, current_func)
-
-
-# [ -Global ]
-def _get_replaced_functions():
-    """Get the replacement data."""
-    return _REPLACED_FUNCTIONS
-
-replace_stds()
