@@ -78,20 +78,5 @@ class OutputDevice:
 
     def _replace(self, parent, func_name):
         """watch the output."""
-        write = InterruptionWriter(output_device=self).write
+        write = self.write_interruption
         setattr(parent, func_name, write)
-
-
-class InterruptionWriter:
-    """Interruption Writer."""
-
-    def __init__(self, *, output_device=OutputDevice()):
-        """init the state."""
-        # initial state.
-        self._output_device = output_device
-
-    # [ Public ]
-    # [ -Internal ]
-    def write(self, data):
-        """write the data."""
-        return self._output_device.write_interruption(data)
