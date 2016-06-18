@@ -1,7 +1,7 @@
 import otter
 import sys
 
-otter.replace_stds()
+# otter.replace_stds()
 
 s1 = otter.Stream()
 s2 = otter.Stream()
