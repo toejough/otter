@@ -27,10 +27,13 @@ _STD_ERR = StdErrOutputMechanism()
 class Stream:
     """Stream."""
 
-    def __init__(self):
+    def __init__(self, *, recorder=_RECORDER, output_device=_OUTPUT_DEVICE, output_mechanism=_STD_OUT):
         """init the state."""
         # initial state.
         self.data = ''
+        self._recorder = recorder
+        self._output_device = output_device
+        self._output_mechanism = output_mechanism
 
     # [ Public ]
     # [ -Internal ]
@@ -62,15 +65,15 @@ class Stream:
     # [ -Interactors ]
     def _last_output_matches(self, data):
         """return whether the last recorded output matches the stream."""
-        return _RECORDER.last_output == data
+        return self._recorder.last_output == data
 
     def _write(self, data_to_write, should_reset):
         """actually write and record the data."""
         if should_reset:
-            _OUTPUT_DEVICE.reset()
-        output = _OUTPUT_DEVICE.write(data_to_write, _STD_OUT)
-        _RECORDER.last_output = self.data
-        _RECORDER.last_from_stream = True
+            self._output_device.reset()
+        output = self._output_device.write(data_to_write, self._output_mechanism)
+        self._recorder.last_output = self.data
+        self._recorder.last_from_stream = True
         return output
 
     # [ -Data ]
@@ -81,19 +84,30 @@ class Stream:
 
 def replace_stds():
     """replace the std streams."""
-    replace(sys.stdout, 'write')
-    # replace(sys.stderr, 'write')
+    replace(sys.stdout, 'write', _STD_OUT)
+    replace(sys.stderr, 'write', _STD_ERR)
 
 
-def replace(parent, func_name):
+def replace(parent, func_name, output_mechanism, *, recorder=_RECORDER, output_device=_OUTPUT_DEVICE):
     """watch the output."""
     _save_original(parent, func_name)
-    write = InterruptionWriter().write
+    write = InterruptionWriter(
+        recorder=recorder,
+        output_device=output_device,
+        output_mechanism=output_mechanism
+    ).write
     setattr(parent, func_name, write)
 
 
 class InterruptionWriter:
     """Interruption Writer."""
+
+    def __init__(self, *, recorder=_RECORDER, output_device=_OUTPUT_DEVICE, output_mechanism=_STD_OUT):
+        """init the state."""
+        # initial state.
+        self._recorder = recorder
+        self._output_device = output_device
+        self._output_mechanism = output_mechanism
 
     # [ Public ]
     # [ -Internal ]
@@ -115,15 +129,15 @@ class InterruptionWriter:
     # [ -Interactor ]
     def _last_output_from_stream(self):
         """Return whether the last output was from a stream."""
-        return _RECORDER.last_from_stream
+        return self._recorder.last_from_stream
 
     def _write(self, data, should_reset):
         """Actually write the data."""
         if should_reset:
-            _OUTPUT_DEVICE.reset()
-        output = _OUTPUT_DEVICE.write(data, _STD_OUT)
-        _RECORDER.last_output = data
-        _RECORDER.last_from_stream = False
+            self._output_device.reset()
+        output = self._output_device.write(data, self._output_mechanism)
+        self._recorder.last_output = data
+        self._recorder.last_from_stream = False
         return output
 
 
