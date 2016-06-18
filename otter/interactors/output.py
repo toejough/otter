@@ -12,6 +12,8 @@ class OutputDevice:
 
     _write = sys.stdout.write
     _flush = sys.stdout.flush
+    _write_err = sys.stderr.write
+    _flush_err = sys.stderr.flush
 
     def __new__(cls, *args, **kwargs):
         """Return singleton."""
@@ -46,6 +48,14 @@ class OutputDevice:
         if not self._stds_replaced:
             self._replace_stds()
 
+    def old_write_stderr(self, data):
+        """Write data to the device via the given output mechanism."""
+        self._write_err(data)
+        self._flush_err()
+        self._is_reset = data.endswith('\n')
+        if not self._stds_replaced:
+            self._replace_stds()
+
     # [ Private ]
     # [ -Internal ]
     def write_stream(self, stream_data):
@@ -63,7 +73,7 @@ class OutputDevice:
 
     # [ Private ]
     # [ -Interactor ]
-    def write_interruption(self, data):
+    def _write_std_out_interruption(self, data):
         """Actually write the data."""
         if data and self._last_from_stream:
             self.reset()
@@ -71,12 +81,19 @@ class OutputDevice:
         self._last_output = data
         self._last_from_stream = False
 
+    def _write_std_err_interruption(self, data):
+        """Actually write the data."""
+        if data and self._last_from_stream:
+            self.reset()
+        self.old_write_stderr(data)
+        self._last_output = data
+        self._last_from_stream = False
+
     def _replace_stds(self):
         """replace the std streams."""
-        self._replace(sys.stdout, 'write')
-        self._replace(sys.stderr, 'write')
+        self._replace(sys.stdout, 'write', self._write_std_out_interruption)
+        self._replace(sys.stderr, 'write', self._write_std_err_interruption)
 
-    def _replace(self, parent, func_name):
+    def _replace(self, parent, func_name, replacement):
         """watch the output."""
-        write = self.write_interruption
-        setattr(parent, func_name, write)
+        setattr(parent, func_name, replacement)
