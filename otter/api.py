@@ -45,9 +45,9 @@ class Stream:
         recorded.
         """
         # Gather all the required data
-        last_output_matches = self._last_output_matches(self.data)
+        last_output_matches_data = self._last_output_matches(self.data)
         new_stream_data = self._get_updated_data(data)
-        should_restart_stream = self._should_restart_stream(data, last_output_matches)
+        should_restart_stream = self._should_restart_stream(data, last_output_matches_data)
         data_to_write = new_stream_data if should_restart_stream else data
 
         # update the stream data
@@ -57,24 +57,36 @@ class Stream:
         return self._write(data_to_write, should_restart_stream)
 
     # [ Private ]
-    # [ -App ]
-    def _should_restart_stream(self, data, last_output_matches):
+    # [ -Internal ]
+    def _write(self, data_to_write, should_reset):
+        """actually write and record the data."""
+        self._reset(should_reset)
+        output = self._write_to_device(data_to_write)
+        self._record_stream_written()
+        return output
+
+    # [ -Logic ]
+    def _should_restart_stream(self, data_exists, last_output_matches_data):
         """return whether the stream should be restarted."""
-        return app.should_restart_stream(data, last_output_matches)
+        return data_exists and not last_output_matches_data
 
     # [ -Interactors ]
     def _last_output_matches(self, data):
         """return whether the last recorded output matches the stream."""
         return self._recorder.last_output == data
 
-    def _write(self, data_to_write, should_reset):
-        """actually write and record the data."""
+    def _reset(self, should_reset):
+        """reset if we should."""
         if should_reset:
             self._output_device.reset()
-        output = self._output_device.write(data_to_write, self._output_mechanism)
+
+    def _write_to_device(self, data_to_write):
+        """write to the device."""
+        return self._output_device.write(data_to_write, self._output_mechanism)
+
+    def _record_stream_written(self):
         self._recorder.last_output = self.data
         self._recorder.last_from_stream = True
-        return output
 
     # [ -Data ]
     def _get_updated_data(self, new_data):
