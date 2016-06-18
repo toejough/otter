@@ -10,17 +10,13 @@ core actions performed.
 # [ -Python ]
 import sys
 # [ -Project ]
-from . import app
-from .interactors.output import StdOutOutputMechanism, StdErrOutputMechanism, Recorder, OutputDevice
+from .interactors.output import OutputDevice
 
 
 # [ Globals ]
 _REPLACED_FUNCTIONS = {}
 
 _OUTPUT_DEVICE = OutputDevice()
-_RECORDER = Recorder('')
-_STD_OUT = StdOutOutputMechanism()
-_STD_ERR = StdErrOutputMechanism()
 
 
 # [ Public ]
