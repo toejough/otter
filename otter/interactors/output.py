@@ -40,6 +40,15 @@ class OutputDevice:
         """Write data to the device via the given output mechanism."""
         self._is_reset = is_reset
 
+    def _get_new_stream_data(self, stream_data):
+        """actually write and record the data."""
+        return stream_data[len(self._last_output):]
+
+    def _update_stream_output(self, stream_data):
+        """actually write and record the data."""
+        self._last_output = stream_data
+        self._last_from_stream = True
+
     # Logic
     def _is_not_reset(self):
         """Reset the device."""
@@ -73,6 +82,14 @@ class OutputDevice:
         if self._stream_needs_reset(stream_data, last_output_matches):
             self.reset()
 
+    def _get_stream_data_to_write(self, last_output_matches, stream_data):
+        """actually write and record the data."""
+        if last_output_matches:
+            to_write = self._get_new_stream_data(stream_data)
+        else:
+            to_write = stream_data
+        return to_write
+
     # Action
     def _reset(self):
         """Reset the device."""
@@ -92,6 +109,13 @@ class OutputDevice:
         self._set_reset(self._data_ends_with_reset(data))
         self._maybe_replace_stds()
 
+    def write_stream(self, stream_data):
+        """actually write and record the data."""
+        last_output_matches = self._last_output_matches(stream_data)
+        self._reset_stream(stream_data, last_output_matches)
+        self.old_write(self._get_stream_data_to_write(last_output_matches, stream_data))
+        self._update_stream_output(stream_data)
+
     # query
     def _data_ends_with_reset(self, data):
         """Write data to the device via the given output mechanism."""
@@ -102,25 +126,6 @@ class OutputDevice:
         return data.startswith(self._last_output)
 
     # unexamined
-    # [ Private ]
-    # [ -Internal ]
-    def write_stream(self, stream_data):
-        """actually write and record the data."""
-        last_output_matches = self._last_output_matches(stream_data)
-        self._reset_stream(stream_data, last_output_matches)
-        # branching
-        # action
-        # data
-        if last_output_matches:
-            to_write = stream_data[len(self._last_output):]
-        else:
-            to_write = stream_data
-        # action
-        self.old_write(to_write)
-        # data
-        self._last_output = stream_data
-        self._last_from_stream = True
-
     # [ Private ]
     # [ -Interactor ]
     def _write_std_out_interruption(self, data):
