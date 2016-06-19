@@ -38,7 +38,6 @@ class OutputDevice:
         """Init the state."""
         self._write_stdout = StdOutWriter().write  # _write
         self._replacer = Replacer()  # _replace_stds
-        self._writer = PlainWriter()  # _write
         self._resetter = Resetter()  # _reset_stream
         self._record_keeper = RecordKeeper
 
@@ -102,7 +101,7 @@ class OutputDevice:
         """actually write and record the data."""
         # arg data
         # internal data
-        self._writer.write(to_write, self._write_stdout)
+        self._resetter.write(to_write, self._write_stdout)
 
     def _replace_stds(self):
         """actually write and record the data."""
@@ -137,7 +136,6 @@ class Replacer:
         self._stds_replaced = False
         self._write_stdout = StdOutWriter().write  # write stdout
         self._write_stderr = StdErrWriter().write  # write stderr
-        self._writer = PlainWriter()  # write_interruption
         self._resetter = Resetter()  # reset interruption
 
     def replace_stds(self):
@@ -173,7 +171,7 @@ class Replacer:
         # internal action
         self._reset_interruption(data)
         # external action
-        self._writer.write(data, write_func)
+        self._resetter.write(data, write_func)
         # internal action
         self._update_interruption_output(data)
 
@@ -207,7 +205,7 @@ class Replacer:
     # replace_stds
 
 
-class PlainWriter:
+class Resetter:
     """The output device."""
 
     def __new__(cls, *args, **kwargs):
@@ -226,6 +224,7 @@ class PlainWriter:
     def __init__(self, initial_data=''):
         """Init the state."""
         self._is_reset = False
+        self._write_stdout = StdOutWriter().write  # _reset
 
     def write(self, data, write_func):
         """write the data via the write func."""
@@ -242,19 +241,6 @@ class PlainWriter:
         self._is_reset = is_reset
     # -write
 
-    def is_not_reset(self):
-        """return true if the writer has not been reset."""
-        return not self._is_reset
-
-
-class Resetter:
-    """The output device."""
-
-    def __init__(self, initial_data=''):
-        """Init the state."""
-        self._write_stdout = StdOutWriter().write  # _reset
-        self._writer = PlainWriter()
-
     def reset(self):
         """Reset the device."""
         if self._is_not_reset():
@@ -263,11 +249,11 @@ class Resetter:
     # reset
     def _is_not_reset(self):
         """Reset the device."""
-        return self._writer.is_not_reset()
+        return not self._is_reset
 
     def _reset(self):
         """Reset the device."""
-        self._writer.write('\n', self._write_stdout)
+        self.write('\n', self._write_stdout)
     # reset
 
 
