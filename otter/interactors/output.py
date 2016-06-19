@@ -28,6 +28,7 @@ class OutputDevice:
 
         return singleton
 
+    # Data
     def __init__(self, initial_data=''):
         """Init the state."""
         self._is_reset = False
@@ -35,39 +36,88 @@ class OutputDevice:
         self._last_from_stream = False
         self._stds_replaced = False
 
+    def _set_reset(self, is_reset):
+        """Write data to the device via the given output mechanism."""
+        self._is_reset = is_reset
+
+    # Logic
+    def _is_not_reset(self):
+        """Reset the device."""
+        return not self._is_reset
+
+    def _stds_have_not_been_replaced(self):
+        """Write data to the device via the given output mechanism."""
+        return not self._stds_replaced
+
+    def _last_output_matches(self, stream_data):
+        """actually write and record the data."""
+        return self._last_output and self._data_startswith_last_output(stream_data)
+
+    def _stream_needs_reset(self, stream_data, last_output_matches):
+        """actually write and record the data."""
+        return stream_data and not last_output_matches
+
+    # Branching
     def reset(self):
         """Reset the device."""
-        if not self._is_reset:
-            self.old_write('\n')
+        if self._is_not_reset():
+            self._reset()
+
+    def _maybe_replace_stds(self):
+        """Write data to the device via the given output mechanism."""
+        if self._stds_have_not_been_replaced():
+            self._replace_stds()
+
+    def _reset_stream(self, stream_data, last_output_matches):
+        """actually write and record the data."""
+        if self._stream_needs_reset(stream_data, last_output_matches):
+            self.reset()
+
+    # Action
+    def _reset(self):
+        """Reset the device."""
+        self.old_write('\n')
 
     def old_write(self, data):
         """Write data to the device via the given output mechanism."""
         self._write(data)
         self._flush()
-        self._is_reset = data.endswith('\n')
-        if not self._stds_replaced:
-            self._replace_stds()
+        self._set_reset(self._data_ends_with_reset(data))
+        self._maybe_replace_stds()
 
     def old_write_stderr(self, data):
         """Write data to the device via the given output mechanism."""
         self._write_err(data)
         self._flush_err()
-        self._is_reset = data.endswith('\n')
-        if not self._stds_replaced:
-            self._replace_stds()
+        self._set_reset(self._data_ends_with_reset(data))
+        self._maybe_replace_stds()
 
+    # query
+    def _data_ends_with_reset(self, data):
+        """Write data to the device via the given output mechanism."""
+        return data.endswith('\n')
+
+    def _data_startswith_last_output(self, data):
+        """actually write and record the data."""
+        return data.startswith(self._last_output)
+
+    # unexamined
     # [ Private ]
     # [ -Internal ]
     def write_stream(self, stream_data):
         """actually write and record the data."""
-        last_output_matches = self._last_output and stream_data.startswith(self._last_output)
-        if stream_data and not last_output_matches:
-            self.reset()
+        last_output_matches = self._last_output_matches(stream_data)
+        self._reset_stream(stream_data, last_output_matches)
+        # branching
+        # action
+        # data
         if last_output_matches:
             to_write = stream_data[len(self._last_output):]
         else:
             to_write = stream_data
+        # action
         self.old_write(to_write)
+        # data
         self._last_output = stream_data
         self._last_from_stream = True
 
