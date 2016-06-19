@@ -34,25 +34,12 @@ class StdErrWriter:
 class OutputDevice:
     """The output device."""
 
-    def __new__(cls, *args, **kwargs):
-        """Return singleton."""
-        singleton = super().__new__(cls, *args, **kwargs)
-        cls.__init__(singleton, *args, **kwargs)
-
-        def return_singleton(cls, *args, **kwargs):
-            """return singleton."""
-            return singleton
-
-        cls.__new__ = return_singleton
-
-        return singleton
-
     def __init__(self):
         """Init the state."""
-        self._write_stdout = StdOutWriter().write
-        self._replacer = Replacer()
-        self._writer = PlainWriter()
-        self._resetter = Resetter()
+        self._write_stdout = StdOutWriter().write  # _write
+        self._replacer = Replacer()  # _replace_stds
+        self._writer = PlainWriter()  # _write
+        self._resetter = Resetter()  # _reset_stream
         self._record_keeper = RecordKeeper
 
     def write_stream(self, stream_data):
@@ -239,19 +226,6 @@ class PlainWriter:
 
 class Resetter:
     """The output device."""
-
-    def __new__(cls, *args, **kwargs):
-        """Return singleton."""
-        singleton = super().__new__(cls, *args, **kwargs)
-        cls.__init__(singleton, *args, **kwargs)
-
-        def return_singleton(cls, *args, **kwargs):
-            """return singleton."""
-            return singleton
-
-        cls.__new__ = return_singleton
-
-        return singleton
 
     def __init__(self, initial_data=''):
         """Init the state."""
