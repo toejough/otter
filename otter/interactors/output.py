@@ -27,7 +27,7 @@ class Resetter:
         """Init the state."""
         self._is_reset = False
 
-    def write(self, data):
+    def set_reset(self, data):
         """write the data via the write func."""
         self._set_reset(self._data_ends_with_reset(data))
 
@@ -57,60 +57,52 @@ class Resetter:
     # reset
 
 
-class StdOutWriter:
+class BaseStdWriter:
+    """The output device."""
+
+    _resetter = Resetter()
+
+    def write(self, data):
+        """write to stdout."""
+        self._write_out(data)
+        self._record_reset(data)
+
+    # write
+    def _write_out(self, data):
+        """write to stdout."""
+        self._write(data)
+        self._flush()
+
+    def _write(self, data):
+        """write."""
+        raise NotImplementedError
+
+    def _flush(self):
+        """flush."""
+        raise NotImplementedError
+
+    def _record_reset(self, data):
+        """write to stdout."""
+        self._resetter.set_reset(data)
+    # write
+
+    def reset(self):
+        """reset stdout."""
+        self._resetter.reset(self)
+
+
+class StdOutWriter(BaseStdWriter):
     """The output device."""
 
     _write = sys.stdout.write
     _flush = sys.stdout.flush
-    _resetter = Resetter()
-
-    def write(self, data):
-        """write to stdout."""
-        self._write_out(data)
-        self._record_reset(data)
-
-    # write
-    def _write_out(self, data):
-        """write to stdout."""
-        self._write(data)
-        self._flush()
-
-    def _record_reset(self, data):
-        """write to stdout."""
-        self._resetter.write(data)
-    # write
-
-    def reset(self):
-        """reset stdout."""
-        self._resetter.reset(self)
 
 
-class StdErrWriter:
+class StdErrWriter(BaseStdWriter):
     """The output device."""
 
     _write = sys.stderr.write
     _flush = sys.stderr.flush
-    _resetter = Resetter()
-
-    def write(self, data):
-        """write to stdout."""
-        self._write_out(data)
-        self._record_reset(data)
-
-    # write
-    def _write_out(self, data):
-        """write to stdout."""
-        self._write(data)
-        self._flush()
-
-    def _record_reset(self, data):
-        """write to stdout."""
-        self._resetter.write(data)
-    # write
-
-    def reset(self):
-        """reset stdout."""
-        self._resetter.reset(self)
 
 
 class OutputDevice:
