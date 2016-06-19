@@ -7,13 +7,32 @@ import sys
 
 
 # [ Public ]
-class OutputDevice:
+class StdOutWriter:
     """The output device."""
 
     _write = sys.stdout.write
     _flush = sys.stdout.flush
-    _write_err = sys.stderr.write
-    _flush_err = sys.stderr.flush
+
+    def write(self, data):
+        """write to stdout."""
+        self._write(data)
+        self._flush()
+
+
+class StdErrWriter:
+    """The output device."""
+
+    _write = sys.stderr.write
+    _flush = sys.stderr.flush
+
+    def write(self, data):
+        """write to stderr."""
+        self._write(data)
+        self._flush()
+
+
+class OutputDevice:
+    """The output device."""
 
     def __new__(cls, *args, **kwargs):
         """Return singleton."""
@@ -35,6 +54,8 @@ class OutputDevice:
         self._last_output = initial_data
         self._last_from_stream = False
         self._stds_replaced = False
+        self._write_stdout = StdOutWriter().write
+        self._write_stderr = StdErrWriter().write
 
     def _set_reset(self, is_reset):
         """Write data to the device via the given output mechanism."""
@@ -102,19 +123,11 @@ class OutputDevice:
     # Action
     def _reset(self):
         """Reset the device."""
-        self.old_write('\n')
+        self._write('\n', self._write_stdout)
 
-    def old_write(self, data):
-        """Write data to the device via the given output mechanism."""
-        self._write(data)
-        self._flush()
-        self._set_reset(self._data_ends_with_reset(data))
-        self._maybe_replace_stds()
-
-    def old_write_stderr(self, data):
-        """Write data to the device via the given output mechanism."""
-        self._write_err(data)
-        self._flush_err()
+    def _write(self, data, write_func):
+        """write the data via the write func."""
+        write_func(data)
         self._set_reset(self._data_ends_with_reset(data))
         self._maybe_replace_stds()
 
@@ -122,7 +135,8 @@ class OutputDevice:
         """actually write and record the data."""
         last_output_matches = self._last_output_matches(stream_data)
         self._reset_stream(stream_data, last_output_matches)
-        self.old_write(self._get_stream_data_to_write(last_output_matches, stream_data))
+        to_write = self._get_stream_data_to_write(last_output_matches, stream_data)
+        self._write(to_write, self._write_stdout)
         self._update_stream_output(stream_data)
 
     def _replace_stds(self):
@@ -137,14 +151,14 @@ class OutputDevice:
     def _write_std_out_interruption(self, data):
         """Actually write the data."""
         self._reset_interruption(data)
-        self.old_write(data)
+        self._write(data, self._write_stdout)
         self._last_output = data
         self._last_from_stream = False
 
     def _write_std_err_interruption(self, data):
         """Actually write the data."""
         self._reset_interruption(data)
-        self.old_write_stderr(data)
+        self._write(data, self._write_stderr)
         self._last_output = data
         self._last_from_stream = False
 
