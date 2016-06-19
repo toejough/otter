@@ -53,6 +53,7 @@ class OutputDevice:
         self._replacer = Replacer()
         self._writer = PlainWriter()
         self._resetter = Resetter()
+        self._record_keeper = RecordKeeper
 
     def write_stream(self, stream_data):
         """actually write and record the data."""
@@ -66,12 +67,12 @@ class OutputDevice:
     # Write stream
     def _last_output_matches(self, stream_data):
         """actually write and record the data."""
-        return self._replacer.last_output and self._data_startswith_last_output(stream_data)
+        return self._record_keeper.last_output and self._data_startswith_last_output(stream_data)
 
     # -last output matches
     def _data_startswith_last_output(self, data):
         """actually write and record the data."""
-        return data.startswith(self._replacer.last_output)
+        return data.startswith(self._record_keeper.last_output)
     # -last output matches
 
     def _reset_stream(self, stream_data, last_output_matches):
@@ -96,7 +97,7 @@ class OutputDevice:
     # -get stream data to write
     def _get_new_stream_data(self, stream_data):
         """actually write and record the data."""
-        return stream_data[len(self._replacer.last_output):]
+        return stream_data[len(self._record_keeper.last_output):]
     # -get stream data to write
 
     def _write(self, to_write):
@@ -109,8 +110,8 @@ class OutputDevice:
 
     def _update_stream_output(self, stream_data):
         """actually write and record the data."""
-        self._replacer.last_output = stream_data
-        self._replacer.last_from_stream = True
+        self._record_keeper.last_output = stream_data
+        self._record_keeper.last_from_stream = True
     # Write stream
 
 
@@ -132,8 +133,7 @@ class Replacer:
 
     def __init__(self, initial_data=''):
         """Init the state."""
-        self.last_output = initial_data
-        self.last_from_stream = False
+        self._record_keeper = RecordKeeper
         self._stds_replaced = False
         self._write_stdout = StdOutWriter().write
         self._write_stderr = StdErrWriter().write
@@ -180,13 +180,13 @@ class Replacer:
     # ----reset interruption
     def _interruption_needs_reset(self, data):
         """Actually write the data."""
-        return data and self.last_from_stream
+        return data and self._record_keeper.last_from_stream
     # ----reset interruption
 
     def _update_interruption_output(self, interruption_data):
         """actually write and record the data."""
-        self.last_output = interruption_data
-        self.last_from_stream = False
+        self._record_keeper.last_output = interruption_data
+        self._record_keeper.last_from_stream = False
     # ---write interruption
     # --write std out/err interruption
 
@@ -267,3 +267,10 @@ class Resetter:
         """Reset the device."""
         self._writer.write('\n', self._write_stdout)
     # reset
+
+
+class RecordKeeper:
+    """Keep a record of the last output and its source."""
+
+    last_output = ''
+    last_from_stream = False
