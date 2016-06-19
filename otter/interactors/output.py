@@ -7,16 +7,82 @@ import sys
 
 
 # [ Public ]
+class Resetter:
+    """The output device."""
+
+    def __new__(cls, *args, **kwargs):
+        """Return singleton."""
+        singleton = super().__new__(cls, *args, **kwargs)
+        cls.__init__(singleton, *args, **kwargs)
+
+        def return_singleton(cls, *args, **kwargs):
+            """return singleton."""
+            return singleton
+
+        cls.__new__ = return_singleton
+
+        return singleton
+
+    def __init__(self, initial_data=''):
+        """Init the state."""
+        self._is_reset = False
+
+    def write(self, data):
+        """write the data via the write func."""
+        self._set_reset(self._data_ends_with_reset(data))
+
+    # -write
+    def _data_ends_with_reset(self, data):
+        """Write data to the device via the given output mechanism."""
+        return data.endswith('\n')
+
+    def _set_reset(self, is_reset):
+        """Write data to the device via the given output mechanism."""
+        self._is_reset = is_reset
+    # -write
+
+    def reset(self, writer):
+        """Reset the device."""
+        if self._is_not_reset():
+            self._reset(writer)
+
+    # reset
+    def _is_not_reset(self):
+        """Reset the device."""
+        return not self._is_reset
+
+    def _reset(self, writer):
+        """Reset the device."""
+        writer.write('\n')
+    # reset
+
+
 class StdOutWriter:
     """The output device."""
 
     _write = sys.stdout.write
     _flush = sys.stdout.flush
+    _resetter = Resetter()
 
     def write(self, data):
         """write to stdout."""
+        self._write_out(data)
+        self._record_reset(data)
+
+    # write
+    def _write_out(self, data):
+        """write to stdout."""
         self._write(data)
         self._flush()
+
+    def _record_reset(self, data):
+        """write to stdout."""
+        self._resetter.write(data)
+    # write
+
+    def reset(self):
+        """reset stdout."""
+        self._resetter.reset(self)
 
 
 class StdErrWriter:
@@ -24,11 +90,27 @@ class StdErrWriter:
 
     _write = sys.stderr.write
     _flush = sys.stderr.flush
+    _resetter = Resetter()
 
     def write(self, data):
-        """write to stderr."""
+        """write to stdout."""
+        self._write_out(data)
+        self._record_reset(data)
+
+    # write
+    def _write_out(self, data):
+        """write to stdout."""
         self._write(data)
         self._flush()
+
+    def _record_reset(self, data):
+        """write to stdout."""
+        self._resetter.write(data)
+    # write
+
+    def reset(self):
+        """reset stdout."""
+        self._resetter.reset(self)
 
 
 class OutputDevice:
@@ -36,9 +118,8 @@ class OutputDevice:
 
     def __init__(self):
         """Init the state."""
-        self._write_stdout = StdOutWriter().write  # _write
+        self._writer = StdOutWriter()  # _write
         self._replacer = Replacer()  # _replace_stds
-        self._resetter = Resetter()  # _reset_stream
         self._record_keeper = RecordKeeper
 
     def write_stream(self, stream_data):
@@ -73,7 +154,7 @@ class OutputDevice:
         # internal
         # external
         if self._stream_needs_reset(stream_data, last_output_matches):
-            self._resetter.reset()
+            self._writer.reset()
 
     # -reset stream
     def _stream_needs_reset(self, stream_data, last_output_matches):
@@ -101,7 +182,7 @@ class OutputDevice:
         """actually write and record the data."""
         # arg data
         # internal data
-        self._resetter.write(to_write, self._write_stdout)
+        self._writer.write(to_write)
 
     def _replace_stds(self):
         """actually write and record the data."""
@@ -134,9 +215,8 @@ class Replacer:
         """Init the state."""
         self._record_keeper = RecordKeeper
         self._stds_replaced = False
-        self._write_stdout = StdOutWriter().write  # write stdout
-        self._write_stderr = StdErrWriter().write  # write stderr
-        self._resetter = Resetter()  # reset interruption
+        self._stdout_writer = StdOutWriter()  # write stdout
+        self._stderr_writer = StdErrWriter()  # write stderr
 
     def replace_stds(self):
         """Write data to the device via the given output mechanism."""
@@ -159,29 +239,29 @@ class Replacer:
     # -replace stds
     def _write_std_out_interruption(self, data):
         """Actually write the data."""
-        self._write_interruption(data, self._write_stdout)
+        self._write_interruption(data, self._stdout_writer)
 
     def _write_std_err_interruption(self, data):
         """Actually write the data."""
-        self._write_interruption(data, self._write_stderr)
+        self._write_interruption(data, self._stderr_writer)
 
     # --write std out/err interruption
-    def _write_interruption(self, data, write_func):
+    def _write_interruption(self, data, writer):
         """write an interruption."""
         # internal action
-        self._reset_interruption(data)
+        self._reset_interruption(data, writer)
         # external action
-        self._resetter.write(data, write_func)
+        writer.write(data)
         # internal action
         self._update_interruption_output(data)
 
     # ---write interruption
-    def _reset_interruption(self, data):
+    def _reset_interruption(self, data, writer):
         """Actually write the data."""
         # internal
         # external
         if self._interruption_needs_reset(data):
-            self._resetter.reset()
+            writer.reset()
 
     # ----reset interruption
     def _interruption_needs_reset(self, data):
@@ -203,58 +283,6 @@ class Replacer:
         setattr(parent, func_name, replacement)
     # -replace stds
     # replace_stds
-
-
-class Resetter:
-    """The output device."""
-
-    def __new__(cls, *args, **kwargs):
-        """Return singleton."""
-        singleton = super().__new__(cls, *args, **kwargs)
-        cls.__init__(singleton, *args, **kwargs)
-
-        def return_singleton(cls, *args, **kwargs):
-            """return singleton."""
-            return singleton
-
-        cls.__new__ = return_singleton
-
-        return singleton
-
-    def __init__(self, initial_data=''):
-        """Init the state."""
-        self._is_reset = False
-        self._write_stdout = StdOutWriter().write  # _reset
-
-    def write(self, data, write_func):
-        """write the data via the write func."""
-        write_func(data)
-        self._set_reset(self._data_ends_with_reset(data))
-
-    # -write
-    def _data_ends_with_reset(self, data):
-        """Write data to the device via the given output mechanism."""
-        return data.endswith('\n')
-
-    def _set_reset(self, is_reset):
-        """Write data to the device via the given output mechanism."""
-        self._is_reset = is_reset
-    # -write
-
-    def reset(self):
-        """Reset the device."""
-        if self._is_not_reset():
-            self._reset()
-
-    # reset
-    def _is_not_reset(self):
-        """Reset the device."""
-        return not self._is_reset
-
-    def _reset(self):
-        """Reset the device."""
-        self.write('\n', self._write_stdout)
-    # reset
 
 
 class RecordKeeper:
