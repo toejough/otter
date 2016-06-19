@@ -47,10 +47,11 @@ class OutputDevice:
 
         return singleton
 
-    def __init__(self, initial_data=''):
+    def __init__(self):
         """Init the state."""
         self._write_stdout = StdOutWriter().write
-        self._writer = Writer()
+        self._replacer = Replacer()
+        self._writer = PlainWriter()
         self._resetter = Resetter()
 
     def write_stream(self, stream_data):
@@ -58,18 +59,19 @@ class OutputDevice:
         last_output_matches = self._last_output_matches(stream_data)
         self._reset_stream(stream_data, last_output_matches)
         to_write = self._get_stream_data_to_write(last_output_matches, stream_data)
-        self._writer.write_and_replace_stds(to_write, self._write_stdout)
+        self._write(to_write)
+        self._replace_stds()
         self._update_stream_output(stream_data)
 
     # Write stream
     def _last_output_matches(self, stream_data):
         """actually write and record the data."""
-        return self._writer.last_output and self._data_startswith_last_output(stream_data)
+        return self._replacer.last_output and self._data_startswith_last_output(stream_data)
 
     # -last output matches
     def _data_startswith_last_output(self, data):
         """actually write and record the data."""
-        return data.startswith(self._writer.last_output)
+        return data.startswith(self._replacer.last_output)
     # -last output matches
 
     def _reset_stream(self, stream_data, last_output_matches):
@@ -94,17 +96,25 @@ class OutputDevice:
     # -get stream data to write
     def _get_new_stream_data(self, stream_data):
         """actually write and record the data."""
-        return stream_data[len(self._writer.last_output):]
+        return stream_data[len(self._replacer.last_output):]
     # -get stream data to write
+
+    def _write(self, to_write):
+        """actually write and record the data."""
+        self._writer.write(to_write, self._write_stdout)
+
+    def _replace_stds(self):
+        """actually write and record the data."""
+        self._replacer.replace_stds()
 
     def _update_stream_output(self, stream_data):
         """actually write and record the data."""
-        self._writer.last_output = stream_data
-        self._writer.last_from_stream = True
+        self._replacer.last_output = stream_data
+        self._replacer.last_from_stream = True
     # Write stream
 
 
-class Writer:
+class Replacer:
     """The output device."""
 
     def __new__(cls, *args, **kwargs):
@@ -127,22 +137,15 @@ class Writer:
         self._stds_replaced = False
         self._write_stdout = StdOutWriter().write
         self._write_stderr = StdErrWriter().write
-        self.writer = PlainWriter()
+        self._writer = PlainWriter()
         self._resetter = Resetter()
 
-    # also called internally by ---write std out/err interruption
-    def write_and_replace_stds(self, data, write_func):
-        """write the data via the write func."""
-        self.writer.write(data, write_func)
-        self._maybe_replace_stds()
-
-    # write and replace
-    def _maybe_replace_stds(self):
+    def replace_stds(self):
         """Write data to the device via the given output mechanism."""
         if self._stds_have_not_been_replaced():
             self._replace_stds()
 
-    # -maybe replace stds
+    # replace_stds
     def _stds_have_not_been_replaced(self):
         """Write data to the device via the given output mechanism."""
         return not self._stds_replaced
@@ -152,7 +155,7 @@ class Writer:
         self._replace(sys.stdout, 'write', self._write_std_out_interruption)
         self._replace(sys.stderr, 'write', self._write_std_err_interruption)
 
-    # --replace stds
+    # -replace stds
     def _write_std_out_interruption(self, data):
         """Actually write the data."""
         self._write_interruption(data, self._write_stdout)
@@ -161,38 +164,37 @@ class Writer:
         """Actually write the data."""
         self._write_interruption(data, self._write_stderr)
 
-    # ---write std out/err interruption
+    # --write std out/err interruption
     def _write_interruption(self, data, write_func):
         """write an interruption."""
         self._reset_interruption(data)
-        self.writer.write(data, write_func)
+        self._writer.write(data, write_func)
         self._update_interruption_output(data)
 
-    # ----write interruption
+    # ---write interruption
     def _reset_interruption(self, data):
         """Actually write the data."""
         if self._interruption_needs_reset(data):
             self._resetter.reset()
 
-    # -----reset interruption
+    # ----reset interruption
     def _interruption_needs_reset(self, data):
         """Actually write the data."""
         return data and self.last_from_stream
-    # -----reset interruption
+    # ----reset interruption
 
     def _update_interruption_output(self, interruption_data):
         """actually write and record the data."""
         self.last_output = interruption_data
         self.last_from_stream = False
-    # ----write interruption
-    # ---write std out/err interruption
+    # ---write interruption
+    # --write std out/err interruption
 
     def _replace(self, parent, func_name, replacement):
         """watch the output."""
         setattr(parent, func_name, replacement)
-    # --replace stds
-    # -maybe replace stds
-    # write
+    # -replace stds
+    # replace_stds
 
 
 class PlainWriter:
