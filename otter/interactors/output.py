@@ -215,7 +215,7 @@ class PlainWriter:
 
     def __init__(self, initial_data=''):
         """Init the state."""
-        self.is_reset = False
+        self._is_reset = False
 
     def write(self, data, write_func):
         """write the data via the write func."""
@@ -229,7 +229,12 @@ class PlainWriter:
 
     def _set_reset(self, is_reset):
         """Write data to the device via the given output mechanism."""
-        self.is_reset = is_reset
+        self._is_reset = is_reset
+    # -write
+
+    def is_not_reset(self):
+        """return true if the writer has not been reset."""
+        return not self._is_reset
 
 
 class Resetter:
@@ -261,7 +266,7 @@ class Resetter:
     # reset
     def _is_not_reset(self):
         """Reset the device."""
-        return not self._writer.is_reset
+        return self._writer.is_not_reset()
 
     def _reset(self):
         """Reset the device."""
