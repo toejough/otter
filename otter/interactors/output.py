@@ -66,6 +66,10 @@ class OutputDevice:
         """actually write and record the data."""
         return stream_data and not last_output_matches
 
+    def _interruption_needs_reset(self, data):
+        """Actually write the data."""
+        return data and self._last_from_stream
+
     # Branching
     def reset(self):
         """Reset the device."""
@@ -89,6 +93,11 @@ class OutputDevice:
         else:
             to_write = stream_data
         return to_write
+
+    def _reset_interruption(self, data):
+        """Actually write the data."""
+        if self._interruption_needs_reset(data):
+            self.reset()
 
     # Action
     def _reset(self):
@@ -116,34 +125,6 @@ class OutputDevice:
         self.old_write(self._get_stream_data_to_write(last_output_matches, stream_data))
         self._update_stream_output(stream_data)
 
-    # query
-    def _data_ends_with_reset(self, data):
-        """Write data to the device via the given output mechanism."""
-        return data.endswith('\n')
-
-    def _data_startswith_last_output(self, data):
-        """actually write and record the data."""
-        return data.startswith(self._last_output)
-
-    # unexamined
-    # [ Private ]
-    # [ -Interactor ]
-    def _write_std_out_interruption(self, data):
-        """Actually write the data."""
-        if data and self._last_from_stream:
-            self.reset()
-        self.old_write(data)
-        self._last_output = data
-        self._last_from_stream = False
-
-    def _write_std_err_interruption(self, data):
-        """Actually write the data."""
-        if data and self._last_from_stream:
-            self.reset()
-        self.old_write_stderr(data)
-        self._last_output = data
-        self._last_from_stream = False
-
     def _replace_stds(self):
         """replace the std streams."""
         self._replace(sys.stdout, 'write', self._write_std_out_interruption)
@@ -152,3 +133,26 @@ class OutputDevice:
     def _replace(self, parent, func_name, replacement):
         """watch the output."""
         setattr(parent, func_name, replacement)
+
+    def _write_std_out_interruption(self, data):
+        """Actually write the data."""
+        self._reset_interruption(data)
+        self.old_write(data)
+        self._last_output = data
+        self._last_from_stream = False
+
+    def _write_std_err_interruption(self, data):
+        """Actually write the data."""
+        self._reset_interruption(data)
+        self.old_write_stderr(data)
+        self._last_output = data
+        self._last_from_stream = False
+
+    # query
+    def _data_ends_with_reset(self, data):
+        """Write data to the device via the given output mechanism."""
+        return data.endswith('\n')
+
+    def _data_startswith_last_output(self, data):
+        """actually write and record the data."""
+        return data.startswith(self._last_output)
