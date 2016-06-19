@@ -148,19 +148,20 @@ class OutputDevice:
         """watch the output."""
         setattr(parent, func_name, replacement)
 
-    def _write_std_out_interruption(self, data):
-        """Actually write the data."""
+    def _write_interruption(self, data, write_func):
+        """write an interruption."""
         self._reset_interruption(data)
-        self._write(data, self._write_stdout)
+        self._write(data, write_func)
         self._last_output = data
         self._last_from_stream = False
 
+    def _write_std_out_interruption(self, data):
+        """Actually write the data."""
+        self._write_interruption(data, self._write_stdout)
+
     def _write_std_err_interruption(self, data):
         """Actually write the data."""
-        self._reset_interruption(data)
-        self._write(data, self._write_stderr)
-        self._last_output = data
-        self._last_from_stream = False
+        self._write_interruption(data, self._write_stderr)
 
     # query
     def _data_ends_with_reset(self, data):
