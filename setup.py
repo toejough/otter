@@ -8,7 +8,7 @@ from setuptools import setup, find_packages
 # [ Script ]
 setup(
     name='otter',
-    version='0.1.0',
+    version='0.1.1',
     description='Module to cleanly resume CLI output after an interruption on the CLI.',
     long_description=open('README.rst').read(),
     url='https://github.com/toejough/otter',
