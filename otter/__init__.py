@@ -39,6 +39,8 @@ class FunctionSink:
     def write(self, output, writer=None):
         """write the output.  Also notify observers."""
         if output:
+            if isinstance(output, bytes):
+                output = output.decode('utf-8')
             needs_newline = False
             for observer in self.observers:
                 if observer(output, writer):
@@ -140,6 +142,8 @@ def use_stds():
 
         def write_and_flush(output):
             """write and flush."""
+            if isinstance(output, bytes):
+                output = output.decode('utf-8')
             original_stdout_write(output)
             sys.stdout.flush()
 
